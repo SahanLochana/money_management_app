@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:money_management_app/models/transaction_model.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/transaction_details_sheet.dart';
 import 'package:money_management_app/presentation/widgets/transactioncard.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -13,8 +14,8 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   String _selectedFilter = 'All';
 
-  final List<Transaction> _allTransactions = const [
-    Transaction(
+  final List<Transaction> _allTransactions = [
+    const Transaction(
       id: '1',
       icon: Icons.free_breakfast_outlined,
       title: 'Tea & Snacks',
@@ -24,8 +25,9 @@ class _HistoryPageState extends State<HistoryPage> {
       amount: -45.00,
       iconColor: AppColors.breakfast,
       dateGroup: 'Today (16 Aug)',
+      note: 'Evening tea with samosa',
     ),
-    Transaction(
+    const Transaction(
       id: '2',
       icon: Icons.lunch_dining_outlined,
       title: 'Thali Meals',
@@ -35,8 +37,9 @@ class _HistoryPageState extends State<HistoryPage> {
       amount: -120.00,
       iconColor: AppColors.lunch,
       dateGroup: 'Today (16 Aug)',
+      note: 'South Indian mini thali',
     ),
-    Transaction(
+    const Transaction(
       id: '3',
       icon: Icons.handshake_outlined,
       title: 'Friend Repayment',
@@ -46,8 +49,9 @@ class _HistoryPageState extends State<HistoryPage> {
       amount: 500.00,
       iconColor: AppColors.lending,
       dateGroup: 'Today (16 Aug)',
+      note: 'UPI transfer from Alex',
     ),
-    Transaction(
+    const Transaction(
       id: '4',
       icon: Icons.dinner_dining_outlined,
       title: 'Dinner with Family',
@@ -57,8 +61,9 @@ class _HistoryPageState extends State<HistoryPage> {
       amount: -350.00,
       iconColor: AppColors.dinner,
       dateGroup: 'Yesterday (15 Aug)',
+      note: 'Family restaurant bill',
     ),
-    Transaction(
+    const Transaction(
       id: '5',
       icon: Icons.local_cafe_outlined,
       title: 'Coffee & Biscuits',
@@ -69,7 +74,7 @@ class _HistoryPageState extends State<HistoryPage> {
       iconColor: AppColors.breakfast,
       dateGroup: 'Yesterday (15 Aug)',
     ),
-    Transaction(
+    const Transaction(
       id: '6',
       icon: Icons.category_outlined,
       title: 'Mobile Recharge',
@@ -79,8 +84,9 @@ class _HistoryPageState extends State<HistoryPage> {
       amount: -299.00,
       iconColor: AppColors.other,
       dateGroup: '14 Aug 2026',
+      note: 'Prepaid 1 month pack',
     ),
-    Transaction(
+    const Transaction(
       id: '7',
       icon: Icons.lunch_dining_outlined,
       title: 'Biryani Special',
@@ -90,6 +96,7 @@ class _HistoryPageState extends State<HistoryPage> {
       amount: -180.00,
       iconColor: AppColors.lunch,
       dateGroup: '13 Aug 2026',
+      note: 'Special dum biryani',
     ),
   ];
 
@@ -105,6 +112,112 @@ class _HistoryPageState extends State<HistoryPage> {
       groups[tx.dateGroup]!.add(tx);
     }
     return groups;
+  }
+
+  void _deleteTransaction(Transaction tx) {
+    final index = _allTransactions.indexOf(tx);
+    setState(() {
+      _allTransactions.remove(tx);
+    });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Deleted '${tx.title}'"),
+        backgroundColor: AppColors.surfaceLight,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(
+          label: "Undo",
+          textColor: AppColors.primary,
+          onPressed: () {
+            setState(() {
+              if (index >= 0 && index <= _allTransactions.length) {
+                _allTransactions.insert(index, tx);
+              } else {
+                _allTransactions.add(tx);
+              }
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteDialog(Transaction tx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Text(
+          "Delete Expense?",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to delete '${tx.title}' (${tx.formattedAmount})?",
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Delete",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  void _showTransactionDetails(Transaction tx) {
+    TransactionDetailsSheet.show(
+      context,
+      transaction: tx,
+      onDelete: () async {
+        final confirmed = await _confirmDeleteDialog(tx);
+        if (confirmed) {
+          _deleteTransaction(tx);
+        }
+      },
+      onEdit: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Edit '${tx.title}' coming soon"),
+            backgroundColor: AppColors.surfaceLight,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -169,7 +282,20 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ),
 
-            // Grouped Transactions
+          // Grouped Transactions
+          if (grouped.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(
+                    "No transactions found for this wallet",
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                  ),
+                ),
+              ),
+            )
+          else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               sliver: SliverList(
@@ -193,10 +319,46 @@ class _HistoryPageState extends State<HistoryPage> {
                             ),
                           ),
                         ),
-                        ...groupItems.map((item) => TransactionCard(
+                        ...groupItems.map(
+                          (item) => Dismissible(
+                            key: Key(item.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.only(right: 20),
+                              alignment: Alignment.centerRight,
+                              decoration: BoxDecoration(
+                                color: AppColors.expense.withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "Delete",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            confirmDismiss: (direction) => _confirmDeleteDialog(item),
+                            onDismissed: (direction) => _deleteTransaction(item),
+                            child: TransactionCard(
                               transaction: item,
-                              onTap: () {},
-                            )),
+                              onTap: () => _showTransactionDetails(item),
+                            ),
+                          ),
+                        ),
                       ],
                     );
                   },
@@ -205,11 +367,11 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ),
 
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
-            ),
-          ],
-        ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 100),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:money_management_app/models/transaction_model.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/widgets/herocard.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
+import 'package:money_management_app/presentation/widgets/transaction_details_sheet.dart';
 import 'package:money_management_app/presentation/widgets/transactioncard.dart';
 
 class Homepage extends StatefulWidget {
@@ -16,9 +17,9 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   static const double _dailyBudget = 2000.0;
 
-  // Transactions containing ONLY current day (Today) and Yesterday
-  final List<Transaction> _transactions = const [
-    Transaction(
+  // Mutable transaction list for deletion and undo
+  final List<Transaction> _transactions = [
+    const Transaction(
       id: '1',
       icon: Icons.free_breakfast_outlined,
       title: 'Tea & Breakfast',
@@ -28,8 +29,9 @@ class _HomepageState extends State<Homepage> {
       amount: -45.00,
       iconColor: AppColors.breakfast,
       dateGroup: 'Today',
+      note: 'Masala dosa and hot tea',
     ),
-    Transaction(
+    const Transaction(
       id: '2',
       icon: Icons.lunch_dining_outlined,
       title: 'South Indian Meals',
@@ -39,8 +41,9 @@ class _HomepageState extends State<Homepage> {
       amount: -120.00,
       iconColor: AppColors.lunch,
       dateGroup: 'Today',
+      note: 'Executive lunch with colleagues',
     ),
-    Transaction(
+    const Transaction(
       id: '3',
       icon: Icons.handshake_outlined,
       title: 'Repayment from Rahul',
@@ -50,8 +53,9 @@ class _HomepageState extends State<Homepage> {
       amount: 500.00,
       iconColor: AppColors.lending,
       dateGroup: 'Today',
+      note: 'Weekend trip share repayment',
     ),
-    Transaction(
+    const Transaction(
       id: '4',
       icon: Icons.dinner_dining_outlined,
       title: 'Dinner & Sweets',
@@ -61,8 +65,9 @@ class _HomepageState extends State<Homepage> {
       amount: -350.00,
       iconColor: AppColors.dinner,
       dateGroup: 'Yesterday',
+      note: 'Family dinner take-out',
     ),
-    Transaction(
+    const Transaction(
       id: '5',
       icon: Icons.category_outlined,
       title: 'Stationery & Notebook',
@@ -72,8 +77,9 @@ class _HomepageState extends State<Homepage> {
       amount: -80.00,
       iconColor: AppColors.other,
       dateGroup: 'Yesterday',
+      note: 'A5 journal for notes',
     ),
-    Transaction(
+    const Transaction(
       id: '6',
       icon: Icons.free_breakfast_outlined,
       title: 'Morning Filter Coffee',
@@ -114,6 +120,112 @@ class _HomepageState extends State<Homepage> {
     } else {
       return "Good Evening 👋";
     }
+  }
+
+  void _deleteTransaction(Transaction tx) {
+    final index = _transactions.indexOf(tx);
+    setState(() {
+      _transactions.remove(tx);
+    });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Deleted '${tx.title}'"),
+        backgroundColor: AppColors.surfaceLight,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(
+          label: "Undo",
+          textColor: AppColors.primary,
+          onPressed: () {
+            setState(() {
+              if (index >= 0 && index <= _transactions.length) {
+                _transactions.insert(index, tx);
+              } else {
+                _transactions.add(tx);
+              }
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteDialog(Transaction tx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Text(
+          "Delete Expense?",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to delete '${tx.title}' (${tx.formattedAmount})?",
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Delete",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  void _showTransactionDetails(Transaction tx) {
+    TransactionDetailsSheet.show(
+      context,
+      transaction: tx,
+      onDelete: () async {
+        final confirmed = await _confirmDeleteDialog(tx);
+        if (confirmed) {
+          _deleteTransaction(tx);
+        }
+      },
+      onEdit: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Edit '${tx.title}' coming soon"),
+            backgroundColor: AppColors.surfaceLight,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -187,59 +299,106 @@ class _HomepageState extends State<Homepage> {
           ),
 
           // Grouped Transaction List (Today & Yesterday only)
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, groupIndex) {
-                  final groupKey = grouped.keys.elementAt(groupIndex);
-                  final groupItems = grouped[groupKey]!;
+          if (_transactions.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(
+                    "No recent transactions",
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, groupIndex) {
+                    final groupKey = grouped.keys.elementAt(groupIndex);
+                    final groupItems = grouped[groupKey]!;
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                          groupKey.toUpperCase(),
-                          style: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.1,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                            groupKey.toUpperCase(),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.1,
+                            ),
                           ),
                         ),
-                      ),
-                      ...groupItems.asMap().entries.map((entry) {
-                        final item = entry.value;
-                        final globalIndex = groupIndex * 3 + entry.key;
+                        ...groupItems.asMap().entries.map((entry) {
+                          final item = entry.value;
+                          final globalIndex = groupIndex * 3 + entry.key;
 
-                        return TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 250 + (globalIndex * 40)),
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(0, 14 * (1 - value)),
-                              child: Opacity(
-                                opacity: value,
-                                child: child,
+                          return TweenAnimationBuilder<double>(
+                            duration: Duration(milliseconds: 250 + (globalIndex * 40)),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 14 * (1 - value)),
+                                child: Opacity(
+                                  opacity: value,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Dismissible(
+                              key: Key(item.id),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(right: 20),
+                                alignment: Alignment.centerRight,
+                                decoration: BoxDecoration(
+                                  color: AppColors.expense.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      "Delete",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            );
-                          },
-                          child: TransactionCard(
-                            transaction: item,
-                            onTap: () {},
-                          ),
-                        );
-                      }),
-                    ],
-                  );
-                },
-                childCount: grouped.keys.length,
+                              confirmDismiss: (direction) => _confirmDeleteDialog(item),
+                              onDismissed: (direction) => _deleteTransaction(item),
+                              child: TransactionCard(
+                                transaction: item,
+                                onTap: () => _showTransactionDetails(item),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  },
+                  childCount: grouped.keys.length,
+                ),
               ),
             ),
-          ),
 
           // Bottom Spacing for Navigation Bar & FAB
           const SliverToBoxAdapter(

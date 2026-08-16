@@ -10,6 +10,7 @@ class Transaction {
   final double amount; // negative for expense, positive for income
   final Color iconColor;
   final String dateGroup; // "Today", "Yesterday"
+  final String? note;
 
   const Transaction({
     required this.id,
@@ -21,6 +22,7 @@ class Transaction {
     required this.amount,
     required this.iconColor,
     required this.dateGroup,
+    this.note,
   });
 
   bool get isIncome => amount > 0;
