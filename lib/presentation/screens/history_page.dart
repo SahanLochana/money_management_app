@@ -113,62 +113,61 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "History",
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        title: const Text(
+          "History",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+      ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Wallet Filter Chips
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                children: ['All', 'In Hand', 'In Bank'].map((filter) {
+                  final isSelected = _selectedFilter == filter;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(filter),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() => _selectedFilter = filter);
+                        }
+                      },
+                      backgroundColor: AppColors.surface,
+                      selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                      labelStyle: TextStyle(
+                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                      side: BorderSide(
+                        color: isSelected ? AppColors.primary : AppColors.surfaceBorder,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    // Wallet Filter Chips
-                    Row(
-                      children: ['All', 'In Hand', 'In Bank'].map((filter) {
-                        final isSelected = _selectedFilter == filter;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(filter),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setState(() => _selectedFilter = filter);
-                              }
-                            },
-                            backgroundColor: AppColors.surface,
-                            selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                            labelStyle: TextStyle(
-                              color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              fontSize: 12,
-                            ),
-                            side: BorderSide(
-                              color: isSelected ? AppColors.primary : AppColors.surfaceBorder,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
+                  );
+                }).toList(),
               ),
             ),
+          ),
 
             // Grouped Transactions
             SliverPadding(
@@ -211,7 +210,6 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ],
         ),
-      ),
     );
   }
 }

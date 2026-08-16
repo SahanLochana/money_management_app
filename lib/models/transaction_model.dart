@@ -27,7 +27,7 @@ class Transaction {
   bool get isExpense => amount < 0;
 
   String get formattedAmount {
-    final prefix = isIncome ? '+₹' : '-₹';
+    final prefix = isIncome ? '+Rs ' : '-Rs ';
     final absAmount = amount.abs().toStringAsFixed(0);
     return '$prefix$absAmount';
   }

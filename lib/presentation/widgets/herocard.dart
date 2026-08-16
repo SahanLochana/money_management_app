@@ -11,8 +11,10 @@ class TodaySpentCard extends StatelessWidget {
     this.dailyBudget = 2000.0,
   });
 
-  double get remainingBudget => (dailyBudget - dailySpent).clamp(0.0, double.infinity);
-  double get spentPercentage => dailyBudget > 0 ? (dailySpent / dailyBudget).clamp(0.0, 1.0) : 0.0;
+  double get remainingBudget =>
+      (dailyBudget - dailySpent).clamp(0.0, double.infinity);
+  double get spentPercentage =>
+      dailyBudget > 0 ? (dailySpent / dailyBudget).clamp(0.0, 1.0) : 0.0;
   bool get isOverBudget => dailySpent > dailyBudget;
 
   @override
@@ -20,8 +22,8 @@ class TodaySpentCard extends StatelessWidget {
     final progressColor = isOverBudget
         ? AppColors.expense
         : spentPercentage > 0.8
-            ? AppColors.warning
-            : AppColors.primary;
+        ? AppColors.warning
+        : AppColors.primary;
 
     return Container(
       width: double.infinity,
@@ -31,10 +33,7 @@ class TodaySpentCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1C2230),
-            Color(0xFF121620),
-          ],
+          colors: [Color(0xFF1C2230), Color(0xFF121620)],
         ),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.08),
@@ -87,7 +86,10 @@ class TodaySpentCard extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: progressColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -113,7 +115,7 @@ class TodaySpentCard extends StatelessWidget {
 
           // Big Spent Amount
           Text(
-            "₹${dailySpent.toStringAsFixed(0)}",
+            "Rs ${dailySpent.toStringAsFixed(0)}",
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 34,
@@ -153,10 +155,12 @@ class TodaySpentCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     isOverBudget
-                        ? "₹${(dailySpent - dailyBudget).toStringAsFixed(0)} exceeded"
-                        : "₹${remainingBudget.toStringAsFixed(0)} left",
+                        ? "Rs ${(dailySpent - dailyBudget).toStringAsFixed(0)} exceeded"
+                        : "Rs ${remainingBudget.toStringAsFixed(0)} left",
                     style: TextStyle(
-                      color: isOverBudget ? AppColors.expense : AppColors.textPrimary,
+                      color: isOverBudget
+                          ? AppColors.expense
+                          : AppColors.textPrimary,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),

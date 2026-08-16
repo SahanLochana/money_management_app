@@ -18,24 +18,28 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          children: [
-            const Text(
-              "Settings",
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Daily Reminders Section
-            const SectionHeader(title: "Daily Reminders"),
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        title: const Text(
+          "Settings",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+      ),
+      body: ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        children: [
+          // Daily Reminders Section
+          const SectionHeader(title: "Daily Reminders"),
             const SizedBox(height: 8),
             _buildReminderCard(
               title: "Breakfast Reminder",
@@ -106,7 +110,6 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 100),
           ],
         ),
-      ),
     );
   }
 
