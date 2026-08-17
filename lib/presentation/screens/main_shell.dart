@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:money_management_app/models/transaction_model.dart';
+import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/history_page.dart';
 import 'package:money_management_app/presentation/screens/homepage.dart';
 import 'package:money_management_app/presentation/screens/settings_page.dart';
@@ -23,6 +25,27 @@ class _MainShellState extends State<MainShell> {
     SettingsPage(),
   ];
 
+  Future<void> _openAddTransaction() async {
+    final result = await Navigator.of(context).push<Transaction>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => const AddTransactionPage(),
+      ),
+    );
+
+    if (result != null && mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Saved '${result.title}' (${result.formattedAmount})"),
+          backgroundColor: AppColors.surfaceLight,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,18 +55,7 @@ class _MainShellState extends State<MainShell> {
         children: _pages,
       ),
       floatingActionButton: FloatingActionBtn(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("Add Expense modal coming next"),
-              backgroundColor: AppColors.surfaceLight,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-        },
+        onPressed: _openAddTransaction,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
