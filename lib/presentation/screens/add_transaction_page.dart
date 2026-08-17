@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:money_management_app/models/transaction_model.dart';
+import 'package:money_management_app/domain/models/category.dart';
+import 'package:money_management_app/domain/models/expense.dart';
+import 'package:money_management_app/domain/models/wallet.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum TransactionMode { expense, income, transfer }
 
-class CategoryOption {
-  final String name;
-  final IconData icon;
-  final Color color;
-
-  const CategoryOption({
-    required this.name,
-    required this.icon,
-    required this.color,
-  });
-}
-
 class AddTransactionPage extends StatefulWidget {
+  final Expense? expenseToEdit;
   final TransactionMode initialMode;
 
   const AddTransactionPage({
     super.key,
+    this.expenseToEdit,
     this.initialMode = TransactionMode.expense,
   });
 
@@ -32,61 +30,67 @@ class AddTransactionPage extends StatefulWidget {
 class _AddTransactionPageState extends State<AddTransactionPage> {
   late TransactionMode _mode;
   final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
 
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
 
-  String _selectedCategory = 'Breakfast';
-  String _selectedWallet = 'In Hand';
+  Category? _selectedCategory;
+  Wallet? _selectedWallet;
 
   // For Transfer Mode
-  String _fromWallet = 'In Hand';
-  String _toWallet = 'In Bank';
+  Wallet? _fromWallet;
+  Wallet? _toWallet;
 
-  final List<CategoryOption> _categories = const [
-    CategoryOption(
-      name: 'Breakfast',
-      icon: Icons.free_breakfast_outlined,
-      color: AppColors.breakfast,
-    ),
-    CategoryOption(
-      name: 'Lunch',
-      icon: Icons.lunch_dining_outlined,
-      color: AppColors.lunch,
-    ),
-    CategoryOption(
-      name: 'Dinner',
-      icon: Icons.dinner_dining_outlined,
-      color: AppColors.dinner,
-    ),
-    CategoryOption(
-      name: 'Lending',
-      icon: Icons.handshake_outlined,
-      color: AppColors.lending,
-    ),
-    CategoryOption(
-      name: 'Other',
-      icon: Icons.category_outlined,
-      color: AppColors.other,
-    ),
-  ];
-
-  final List<String> _wallets = const ['In Hand', 'In Bank'];
+  bool get isEditMode => widget.expenseToEdit != null;
 
   @override
   void initState() {
     super.initState();
     _mode = widget.initialMode;
-    _selectedDate = DateTime.now();
-    _selectedTime = TimeOfDay.now();
+    final exp = widget.expenseToEdit;
+
+    if (exp != null) {
+      _amountController.text = exp.amount.toStringAsFixed(0);
+      if (exp.note != null) _noteController.text = exp.note!;
+      try {
+        _selectedDate = DateTime.parse(exp.expenseDate);
+      } catch (_) {
+        _selectedDate = DateTime.now();
+      }
+      try {
+        final parts = exp.expenseTime.split(':');
+        _selectedTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      } catch (_) {
+        _selectedTime = TimeOfDay.now();
+      }
+    } else {
+      _selectedDate = DateTime.now();
+      _selectedTime = TimeOfDay.now();
+      _loadLastUsedWallet();
+    }
+  }
+
+  Future<void> _loadLastUsedWallet() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastWalletId = prefs.getInt('last_used_wallet_id');
+    if (lastWalletId != null && mounted) {
+      final state = context.read<ExpenseBloc>().state;
+      if (state is ExpenseLoaded) {
+        final w = state.getWallet(lastWalletId);
+        if (w != null) {
+          setState(() => _selectedWallet = w);
+        }
+      }
+    }
   }
 
   @override
   void dispose() {
     _amountController.dispose();
-    _titleController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -103,6 +107,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   String get _pageTitle {
+    if (isEditMode) return 'Edit Expense';
     switch (_mode) {
       case TransactionMode.expense:
         return 'Add Expense';
@@ -157,14 +162,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  void _onSave() {
+  Future<void> _onSave(List<Category> categories, List<Wallet> wallets) async {
     final amountText = _amountController.text.trim();
     final parsedAmount = double.tryParse(amountText);
 
     if (parsedAmount == null || parsedAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Please enter a valid amount"),
+          content: const Text("Amount must be greater than 0"),
           backgroundColor: AppColors.expense,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -173,134 +178,178 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return;
     }
 
-    if (_mode == TransactionMode.transfer) {
-      if (_fromWallet == _toWallet) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Source and destination wallets cannot be the same"),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-        return;
-      }
-
-      final transferTx = Transaction(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        icon: Icons.swap_horiz_rounded,
-        title: 'Transfer: $_fromWallet → $_toWallet',
-        category: 'Transfer',
-        wallet: _fromWallet,
-        time: _selectedTime.format(context),
-        amount: -parsedAmount,
-        iconColor: AppColors.secondary,
-        dateGroup: 'Today',
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+    final category = _selectedCategory ?? categories.firstOrNull;
+    if (category == null && _mode != TransactionMode.transfer) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Please select a category"),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
-
-      Navigator.pop(context, transferTx);
       return;
     }
 
-    final categoryObj = _categories.firstWhere(
-      (c) => c.name == _selectedCategory,
-      orElse: () => _categories.first,
-    );
+    final wallet = _selectedWallet ?? wallets.firstOrNull;
+    if (wallet == null && _mode != TransactionMode.transfer) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Please select a wallet"),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
 
-    final autoTitle = _titleController.text.trim().isNotEmpty
-        ? _titleController.text.trim()
-        : categoryObj.name;
+    // Save last used wallet to preferences
+    if (wallet?.id != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('last_used_wallet_id', wallet!.id);
+    }
 
-    final signedAmount = _mode == TransactionMode.expense ? -parsedAmount : parsedAmount;
+    if (!mounted) return;
 
-    final transaction = Transaction(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      icon: categoryObj.icon,
-      title: autoTitle,
-      category: categoryObj.name,
-      wallet: _selectedWallet,
-      time: _selectedTime.format(context),
-      amount: signedAmount,
-      iconColor: categoryObj.color,
-      dateGroup: 'Today',
-      note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
-    );
+    final amountCents = (parsedAmount * 100).toInt();
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final timeStr =
+        '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
+    final note = _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null;
 
-    Navigator.pop(context, transaction);
+    if (isEditMode) {
+      final updated = widget.expenseToEdit!.copyWith(
+        categoryId: category!.id ?? 1,
+        amountCents: amountCents,
+        walletId: wallet!.id,
+        expenseDate: dateStr,
+        expenseTime: timeStr,
+        note: note,
+        updatedAt: DateTime.now(),
+      );
+      context.read<ExpenseBloc>().add(UpdateExpenseEvent(updated));
+    } else {
+      final newExpense = Expense(
+        categoryId: category?.id ?? 1,
+        amountCents: amountCents,
+        walletId: wallet?.id ?? 1,
+        expenseDate: dateStr,
+        expenseTime: timeStr,
+        note: note,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      context.read<ExpenseBloc>().add(AddExpenseEvent(newExpense));
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEditMode ? "Expense updated successfully" : "Expense added successfully",
+          ),
+          backgroundColor: AppColors.surfaceLight,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          _pageTitle,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+    return BlocBuilder<ExpenseBloc, ExpenseState>(
+      builder: (context, state) {
+        List<Category> categories = [];
+        List<Wallet> wallets = [];
+
+        if (state is ExpenseLoaded) {
+          categories = state.categories;
+          wallets = state.wallets;
+
+          if (isEditMode && _selectedCategory == null) {
+            _selectedCategory = state.getCategory(widget.expenseToEdit!.categoryId);
+          }
+          if (isEditMode && _selectedWallet == null) {
+            _selectedWallet = state.getWallet(widget.expenseToEdit!.walletId);
+          }
+          _selectedCategory ??= categories.firstOrNull;
+          _selectedWallet ??= wallets.firstOrNull;
+          _fromWallet ??= wallets.firstOrNull;
+          _toWallet ??= wallets.length > 1 ? wallets[1] : wallets.firstOrNull;
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            centerTitle: false,
+            titleSpacing: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              _pageTitle,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Segmented Mode Selector
-              _buildModeSelector(),
-              const SizedBox(height: 24),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Segmented Mode Selector (hide during Edit)
+                  if (!isEditMode) ...[
+                    _buildModeSelector(),
+                    const SizedBox(height: 24),
+                  ],
 
-              // Large Amount Input
-              _buildAmountInput(),
-              const SizedBox(height: 24),
+                  // Large Amount Input
+                  _buildAmountInput(),
+                  const SizedBox(height: 24),
 
-              // Mode Specific Content
-              if (_mode == TransactionMode.transfer) ...[
-                _buildTransferWalletsSection(),
-                const SizedBox(height: 20),
-              ] else ...[
-                // Categories
-                _buildCategorySection(),
-                const SizedBox(height: 20),
+                  // Mode Specific Content
+                  if (_mode == TransactionMode.transfer) ...[
+                    _buildTransferWalletsSection(wallets),
+                    const SizedBox(height: 20),
+                  ] else ...[
+                    // Categories
+                    _buildCategorySection(categories),
+                    const SizedBox(height: 20),
 
-                // Wallet Selection
-                _buildWalletSection(),
-                const SizedBox(height: 20),
+                    // Wallet Selection
+                    _buildWalletSection(wallets),
+                    const SizedBox(height: 20),
+                  ],
 
-                // Custom Title (Optional)
-                _buildTitleInput(),
-                const SizedBox(height: 20),
-              ],
+                  // Date & Time Row
+                  _buildDateTimeSection(),
+                  const SizedBox(height: 20),
 
-              // Date & Time Row
-              _buildDateTimeSection(),
-              const SizedBox(height: 20),
+                  // Optional Note Input
+                  _buildNoteInput(),
+                  const SizedBox(height: 32),
 
-              // Optional Note Input
-              _buildNoteInput(),
-              const SizedBox(height: 32),
-
-              // Save Button
-              _buildSaveButton(),
-              const SizedBox(height: 24),
-            ],
+                  // Save Button
+                  _buildSaveButton(categories, wallets),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -366,7 +415,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
       child: Column(
         children: [
-          Text(
+          const Text(
             "Enter Amount",
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -380,7 +429,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                "Rs ",
+                "₹ ",
                 style: TextStyle(
                   color: _accentColor,
                   fontSize: 28,
@@ -417,7 +466,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  Widget _buildCategorySection() {
+  Widget _buildCategorySection(List<Category> categories) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -433,23 +482,31 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: _categories.map((cat) {
-            final isSelected = _selectedCategory == cat.name;
+          children: categories.map((cat) {
+            final isSelected = _selectedCategory?.id == cat.id;
+            final catColor = CategoryUIHelper.getColor(cat);
             return GestureDetector(
               onTap: () {
-                setState(() => _selectedCategory = cat.name);
+                setState(() {
+                  _selectedCategory = cat;
+                  if (!isEditMode &&
+                      cat.defaultAmountCents > 0 &&
+                      _amountController.text.isEmpty) {
+                    _amountController.text = cat.defaultAmount.toStringAsFixed(0);
+                  }
+                });
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? cat.color.withValues(alpha: 0.18)
+                      ? catColor.withValues(alpha: 0.18)
                       : AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
-                        ? cat.color.withValues(alpha: 0.6)
+                        ? catColor.withValues(alpha: 0.6)
                         : AppColors.surfaceBorder,
                     width: isSelected ? 1.5 : 1,
                   ),
@@ -457,16 +514,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      cat.icon,
-                      color: isSelected ? cat.color : AppColors.textSecondary,
-                      size: 18,
+                    Text(
+                      cat.emoji,
+                      style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       cat.name,
                       style: TextStyle(
-                        color: isSelected ? cat.color : AppColors.textPrimary,
+                        color: isSelected ? catColor : AppColors.textPrimary,
                         fontSize: 13,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -481,7 +537,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  Widget _buildWalletSection() {
+  Widget _buildWalletSection(List<Wallet> wallets) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -495,8 +551,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         ),
         const SizedBox(height: 12),
         Row(
-          children: _wallets.map((wallet) {
-            final isSelected = _selectedWallet == wallet;
+          children: wallets.map((wallet) {
+            final isSelected = _selectedWallet?.id == wallet.id;
             return Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -504,8 +560,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 },
                 child: Container(
                   margin: EdgeInsets.only(
-                    right: wallet == _wallets.first ? 8 : 0,
-                    left: wallet == _wallets.last ? 8 : 0,
+                    right: wallet == wallets.first ? 8 : 0,
+                    left: wallet == wallets.last ? 8 : 0,
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   decoration: BoxDecoration(
@@ -523,16 +579,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        wallet == 'In Bank'
-                            ? Icons.account_balance_rounded
-                            : Icons.wallet_rounded,
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                        size: 18,
+                      Text(
+                        wallet.emoji,
+                        style: const TextStyle(fontSize: 16),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        wallet,
+                        wallet.name,
                         style: TextStyle(
                           color: isSelected ? AppColors.primary : AppColors.textPrimary,
                           fontSize: 13,
@@ -550,7 +603,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  Widget _buildTransferWalletsSection() {
+  Widget _buildTransferWalletsSection(List<Wallet> wallets) {
+    final fromName = _fromWallet?.name ?? 'In Hand';
+    final toName = _toWallet?.name ?? 'In Bank';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -572,7 +628,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ),
           child: Row(
             children: [
-              // From Wallet
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -587,7 +642,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _fromWallet,
+                      fromName,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 15,
@@ -597,8 +652,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   ],
                 ),
               ),
-
-              // Swap Button
               IconButton(
                 onPressed: () {
                   setState(() {
@@ -620,8 +673,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   ),
                 ),
               ),
-
-              // To Wallet
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -636,7 +687,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _toWallet,
+                      toName,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 15,
@@ -647,46 +698,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
               ),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTitleInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Title (Optional)",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _titleController,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: "e.g. Masala Dosa, Freelance project",
-            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-            filled: true,
-            fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.surfaceBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.surfaceBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: _accentColor, width: 1.5),
-            ),
           ),
         ),
       ],
@@ -727,7 +738,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       const SizedBox(width: 8),
                       Text(
                         formattedDate,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -765,7 +780,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       const SizedBox(width: 8),
                       Text(
                         formattedTime,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -819,11 +838,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(List<Category> categories, List<Wallet> wallets) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _onSave,
+        onPressed: () => _onSave(categories, wallets),
         style: ElevatedButton.styleFrom(
           backgroundColor: _accentColor,
           foregroundColor: const Color(0xFF0F0F14),
@@ -834,7 +853,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           elevation: 0,
         ),
         child: Text(
-          _mode == TransactionMode.transfer ? "Complete Transfer" : "Save Transaction",
+          isEditMode
+              ? "Update Expense"
+              : _mode == TransactionMode.transfer
+                  ? "Complete Transfer"
+                  : "Save Expense",
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,

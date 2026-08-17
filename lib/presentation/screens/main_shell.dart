@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:money_management_app/models/transaction_model.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/history_page.dart';
 import 'package:money_management_app/presentation/screens/homepage.dart';
-import 'package:money_management_app/presentation/screens/settings_page.dart';
 import 'package:money_management_app/presentation/screens/stats_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/widgets/floatingactionbtn.dart';
@@ -22,28 +20,15 @@ class _MainShellState extends State<MainShell> {
     Homepage(),
     StatsPage(),
     HistoryPage(),
-    SettingsPage(),
   ];
 
   Future<void> _openAddTransaction() async {
-    final result = await Navigator.of(context).push<Transaction>(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (context) => const AddTransactionPage(),
       ),
     );
-
-    if (result != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Saved '${result.title}' (${result.formattedAmount})"),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
   }
 
   @override
@@ -76,7 +61,7 @@ class _MainShellState extends State<MainShell> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: BottomNavigationBar(
               currentIndex: _currentIndex,
               onTap: (index) {
@@ -114,7 +99,7 @@ class _MainShellState extends State<MainShell> {
                     padding: EdgeInsets.only(bottom: 4),
                     child: Icon(Icons.pie_chart_rounded),
                   ),
-                  label: "Stat",
+                  label: "Stats",
                 ),
                 BottomNavigationBarItem(
                   icon: Padding(
@@ -126,17 +111,6 @@ class _MainShellState extends State<MainShell> {
                     child: Icon(Icons.history_toggle_off_rounded),
                   ),
                   label: "History",
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.settings_outlined),
-                  ),
-                  activeIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.settings_rounded),
-                  ),
-                  label: "Settings",
                 ),
               ],
             ),

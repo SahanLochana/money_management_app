@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:money_management_app/models/transaction_model.dart';
+import 'package:money_management_app/domain/models/category.dart';
+import 'package:money_management_app/domain/models/expense.dart';
+import 'package:money_management_app/domain/models/wallet.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
 
 class TransactionDetailsSheet extends StatelessWidget {
-  final Transaction transaction;
+  final Expense expense;
+  final Category? category;
+  final Wallet? wallet;
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
 
   const TransactionDetailsSheet({
     super.key,
-    required this.transaction,
+    required this.expense,
+    this.category,
+    this.wallet,
     this.onDelete,
     this.onEdit,
   });
 
   static Future<void> show(
     BuildContext context, {
-    required Transaction transaction,
+    required Expense expense,
+    Category? category,
+    Wallet? wallet,
     VoidCallback? onDelete,
     VoidCallback? onEdit,
   }) {
@@ -25,7 +34,9 @@ class TransactionDetailsSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => TransactionDetailsSheet(
-        transaction: transaction,
+        expense: expense,
+        category: category,
+        wallet: wallet,
         onDelete: onDelete,
         onEdit: onEdit,
       ),
@@ -34,7 +45,10 @@ class TransactionDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isIncome = transaction.isIncome;
+    final catColor = CategoryUIHelper.getColor(category);
+    final catIcon = CategoryUIHelper.getIcon(category);
+    final categoryName = category?.name ?? 'Expense';
+    final walletName = wallet?.name ?? 'Wallet';
 
     return Container(
       decoration: const BoxDecoration(
@@ -59,29 +73,38 @@ class TransactionDetailsSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Icon Bubble
+          // Icon / Emoji Bubble
           Container(
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: transaction.iconColor.withValues(alpha: 0.15),
+              color: catColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: transaction.iconColor.withValues(alpha: 0.3),
+                color: catColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
-            child: Icon(
-              transaction.icon,
-              color: transaction.iconColor,
-              size: 32,
+            child: Center(
+              child: category?.emoji != null && category!.emoji.isNotEmpty
+                  ? Text(
+                      category!.emoji,
+                      style: const TextStyle(fontSize: 28),
+                    )
+                  : Icon(
+                      catIcon,
+                      color: catColor,
+                      size: 32,
+                    ),
             ),
           ),
           const SizedBox(height: 12),
 
           // Title
           Text(
-            transaction.title,
+            expense.note != null && expense.note!.isNotEmpty
+                ? expense.note!
+                : categoryName,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppColors.textPrimary,
@@ -93,9 +116,9 @@ class TransactionDetailsSheet extends StatelessWidget {
 
           // Large Amount
           Text(
-            transaction.formattedAmount,
-            style: TextStyle(
-              color: isIncome ? AppColors.income : AppColors.expense,
+            '-${expense.formattedAmount}',
+            style: const TextStyle(
+              color: AppColors.expense,
               fontSize: 28,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -116,15 +139,15 @@ class TransactionDetailsSheet extends StatelessWidget {
               children: [
                 _buildDetailRow(
                   label: "Category",
-                  value: transaction.category,
-                  icon: Icons.category_rounded,
-                  iconColor: transaction.iconColor,
+                  value: categoryName,
+                  icon: catIcon,
+                  iconColor: catColor,
                 ),
                 _buildDivider(),
                 _buildDetailRow(
                   label: "Wallet",
-                  value: transaction.wallet,
-                  icon: transaction.wallet == 'In Bank'
+                  value: walletName,
+                  icon: walletName == 'In Bank'
                       ? Icons.account_balance_rounded
                       : Icons.wallet_rounded,
                   iconColor: AppColors.primary,
@@ -132,15 +155,15 @@ class TransactionDetailsSheet extends StatelessWidget {
                 _buildDivider(),
                 _buildDetailRow(
                   label: "Date & Time",
-                  value: "${transaction.dateGroup} • ${transaction.time}",
+                  value: "${expense.expenseDate} • ${expense.expenseTime}",
                   icon: Icons.access_time_rounded,
                   iconColor: AppColors.textSecondary,
                 ),
-                if (transaction.note != null && transaction.note!.isNotEmpty) ...[
+                if (expense.note != null && expense.note!.isNotEmpty) ...[
                   _buildDivider(),
                   _buildDetailRow(
                     label: "Note",
-                    value: transaction.note!,
+                    value: expense.note!,
                     icon: Icons.notes_rounded,
                     iconColor: AppColors.warning,
                   ),

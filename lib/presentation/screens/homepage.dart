@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:money_management_app/models/transaction_model.dart';
+import 'package:money_management_app/domain/models/expense.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
+import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
+import 'package:money_management_app/presentation/screens/settings_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/widgets/herocard.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
 import 'package:money_management_app/presentation/widgets/transaction_details_sheet.dart';
 import 'package:money_management_app/presentation/widgets/transactioncard.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -15,100 +22,20 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
-  static const double _dailyBudget = 2000.0;
+  double _dailyBudget = 500.0;
 
-  // Mutable transaction list for deletion and undo
-  final List<Transaction> _transactions = [
-    const Transaction(
-      id: '1',
-      icon: Icons.free_breakfast_outlined,
-      title: 'Tea & Breakfast',
-      category: 'Breakfast',
-      wallet: 'In Hand',
-      time: '8:30 AM',
-      amount: -45.00,
-      iconColor: AppColors.breakfast,
-      dateGroup: 'Today',
-      note: 'Masala dosa and hot tea',
-    ),
-    const Transaction(
-      id: '2',
-      icon: Icons.lunch_dining_outlined,
-      title: 'South Indian Meals',
-      category: 'Lunch',
-      wallet: 'In Hand',
-      time: '1:15 PM',
-      amount: -120.00,
-      iconColor: AppColors.lunch,
-      dateGroup: 'Today',
-      note: 'Executive lunch with colleagues',
-    ),
-    const Transaction(
-      id: '3',
-      icon: Icons.handshake_outlined,
-      title: 'Repayment from Rahul',
-      category: 'Lending',
-      wallet: 'In Bank',
-      time: '5:00 PM',
-      amount: 500.00,
-      iconColor: AppColors.lending,
-      dateGroup: 'Today',
-      note: 'Weekend trip share repayment',
-    ),
-    const Transaction(
-      id: '4',
-      icon: Icons.dinner_dining_outlined,
-      title: 'Dinner & Sweets',
-      category: 'Dinner',
-      wallet: 'In Bank',
-      time: '8:45 PM',
-      amount: -350.00,
-      iconColor: AppColors.dinner,
-      dateGroup: 'Yesterday',
-      note: 'Family dinner take-out',
-    ),
-    const Transaction(
-      id: '5',
-      icon: Icons.category_outlined,
-      title: 'Stationery & Notebook',
-      category: 'Other',
-      wallet: 'In Hand',
-      time: '4:20 PM',
-      amount: -80.00,
-      iconColor: AppColors.other,
-      dateGroup: 'Yesterday',
-      note: 'A5 journal for notes',
-    ),
-    const Transaction(
-      id: '6',
-      icon: Icons.free_breakfast_outlined,
-      title: 'Morning Filter Coffee',
-      category: 'Breakfast',
-      wallet: 'In Hand',
-      time: '8:15 AM',
-      amount: -30.00,
-      iconColor: AppColors.breakfast,
-      dateGroup: 'Yesterday',
-    ),
-  ];
-
-  // Group transactions by dateGroup (Today, Yesterday)
-  Map<String, List<Transaction>> get _groupedTransactions {
-    final Map<String, List<Transaction>> groups = {};
-    for (final tx in _transactions) {
-      if (!groups.containsKey(tx.dateGroup)) {
-        groups[tx.dateGroup] = [];
-      }
-      groups[tx.dateGroup]!.add(tx);
-    }
-    return groups;
+  @override
+  void initState() {
+    super.initState();
+    _loadDailyBudget();
   }
 
-  // Calculate today's total spending
-  double get _todaySpent {
-    return _transactions
-        .where((t) => t.dateGroup == 'Today' && t.isExpense)
-        .fold(0.0, (sum, t) => sum + t.amount.abs());
+  Future<void> _loadDailyBudget() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedBudget = prefs.getDouble('daily_budget') ?? 500.0;
+    if (mounted) {
+      setState(() => _dailyBudget = savedBudget);
+    }
   }
 
   String _getGreeting() {
@@ -122,16 +49,15 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
-  void _deleteTransaction(Transaction tx) {
-    final index = _transactions.indexOf(tx);
-    setState(() {
-      _transactions.remove(tx);
-    });
+  void _deleteExpense(Expense exp) {
+    if (exp.id == null) return;
+    final expId = exp.id!;
+    context.read<ExpenseBloc>().add(DeleteExpenseEvent(expId));
 
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Deleted '${tx.title}'"),
+        content: Text("Deleted expense (${exp.formattedAmount})"),
         backgroundColor: AppColors.surfaceLight,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -139,20 +65,14 @@ class _HomepageState extends State<Homepage> {
           label: "Undo",
           textColor: AppColors.primary,
           onPressed: () {
-            setState(() {
-              if (index >= 0 && index <= _transactions.length) {
-                _transactions.insert(index, tx);
-              } else {
-                _transactions.add(tx);
-              }
-            });
+            context.read<ExpenseBloc>().add(RestoreExpenseEvent(expId));
           },
         ),
       ),
     );
   }
 
-  Future<bool> _confirmDeleteDialog(Transaction tx) async {
+  Future<bool> _confirmDeleteDialog(Expense exp) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -170,7 +90,7 @@ class _HomepageState extends State<Homepage> {
           ),
         ),
         content: Text(
-          "Are you sure you want to delete '${tx.title}' (${tx.formattedAmount})?",
+          "Are you sure you want to delete this expense (${exp.formattedAmount})?",
           style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 14,
@@ -205,32 +125,17 @@ class _HomepageState extends State<Homepage> {
     return confirmed ?? false;
   }
 
-  void _showTransactionDetails(Transaction tx) {
-    TransactionDetailsSheet.show(
-      context,
-      transaction: tx,
-      onDelete: () async {
-        final confirmed = await _confirmDeleteDialog(tx);
-        if (confirmed) {
-          _deleteTransaction(tx);
-        }
-      },
-      onEdit: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Edit '${tx.title}' coming soon"),
-            backgroundColor: AppColors.surfaceLight,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      },
+  void _editExpense(Expense exp) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => AddTransactionPage(expenseToEdit: exp),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final grouped = _groupedTransactions;
     final now = DateTime.now();
     final formattedDate = DateFormat('EEEE, d MMM').format(now);
 
@@ -270,181 +175,212 @@ class _HomepageState extends State<Homepage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 20),
-            child: _buildNotificationButton(),
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.surfaceBorder),
+                ),
+                child: const Icon(
+                  Icons.settings_outlined,
+                  color: AppColors.textPrimary,
+                  size: 20,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                ).then((_) => _loadDailyBudget());
+              },
+            ),
           ),
         ],
       ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Hero Card: Today's Spend + Daily Budget Remaining
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-              child: TodaySpentCard(
-                dailySpent: _todaySpent,
-                dailyBudget: _dailyBudget,
-              ),
-            ),
-          ),
+      body: BlocBuilder<ExpenseBloc, ExpenseState>(
+        builder: (context, state) {
+          if (state is ExpenseLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
 
-          // Section Header
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 6),
-              child: SectionHeader(
-                title: "Recent Transactions",
+          if (state is ExpenseError) {
+            return Center(
+              child: Text(
+                state.message,
+                style: const TextStyle(color: AppColors.expense),
               ),
-            ),
-          ),
+            );
+          }
 
-          // Grouped Transaction List (Today & Yesterday only)
-          if (_transactions.isEmpty)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Text(
-                    "No recent transactions",
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+          List<Expense> todayExpenses = [];
+          double todaySpent = 0.0;
+
+          if (state is ExpenseLoaded) {
+            todayExpenses = state.todayExpenses;
+            todaySpent = state.todayTotal;
+          }
+
+          return RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: AppColors.surface,
+            onRefresh: () async {
+              context.read<ExpenseBloc>().add(const LoadExpenses());
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
+                // Hero Card: Today's Spend + Daily Budget Remaining
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                    child: TodaySpentCard(
+                      dailySpent: todaySpent,
+                      dailyBudget: _dailyBudget,
+                    ),
                   ),
                 ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, groupIndex) {
-                    final groupKey = grouped.keys.elementAt(groupIndex);
-                    final groupItems = grouped[groupKey]!;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text(
-                            groupKey.toUpperCase(),
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.1,
+                // Section Header
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, 6),
+                    child: SectionHeader(
+                      title: "Today's Expenses",
+                    ),
+                  ),
+                ),
+
+                // Today's Expense List or Empty State
+                if (todayExpenses.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.surfaceBorder),
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long_outlined,
+                                color: AppColors.textMuted,
+                                size: 36,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              "No expenses today",
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              "Tap the + button to add your first expense",
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                        ...groupItems.asMap().entries.map((entry) {
-                          final item = entry.value;
-                          final globalIndex = groupIndex * 3 + entry.key;
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final item = todayExpenses[index];
+                          final category = state is ExpenseLoaded
+                              ? state.getCategory(item.categoryId)
+                              : null;
+                          final wallet = state is ExpenseLoaded
+                              ? state.getWallet(item.walletId)
+                              : null;
 
-                          return TweenAnimationBuilder<double>(
-                            duration: Duration(milliseconds: 250 + (globalIndex * 40)),
-                            tween: Tween(begin: 0.0, end: 1.0),
-                            curve: Curves.easeOutCubic,
-                            builder: (context, value, child) {
-                              return Transform.translate(
-                                offset: Offset(0, 14 * (1 - value)),
-                                child: Opacity(
-                                  opacity: value,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: Dismissible(
-                              key: Key(item.id),
-                              direction: DismissDirection.endToStart,
-                              background: Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.only(right: 20),
-                                alignment: Alignment.centerRight,
-                                decoration: BoxDecoration(
-                                  color: AppColors.expense.withValues(alpha: 0.9),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      "Delete",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(
-                                      Icons.delete_outline_rounded,
+                          return Dismissible(
+                            key: Key(item.id.toString()),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.only(right: 20),
+                              alignment: Alignment.centerRight,
+                              decoration: BoxDecoration(
+                                color: AppColors.expense.withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "Delete",
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      size: 22,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ],
                               ),
-                              confirmDismiss: (direction) => _confirmDeleteDialog(item),
-                              onDismissed: (direction) => _deleteTransaction(item),
-                              child: TransactionCard(
-                                transaction: item,
-                                onTap: () => _showTransactionDetails(item),
-                              ),
+                            ),
+                            confirmDismiss: (direction) => _confirmDeleteDialog(item),
+                            onDismissed: (direction) => _deleteExpense(item),
+                            child: TransactionCard(
+                              expense: item,
+                              category: category,
+                              wallet: wallet,
+                              onTap: () {
+                                TransactionDetailsSheet.show(
+                                  context,
+                                  expense: item,
+                                  category: category,
+                                  wallet: wallet,
+                                  onDelete: () async {
+                                    final confirmed = await _confirmDeleteDialog(item);
+                                    if (confirmed) {
+                                      _deleteExpense(item);
+                                    }
+                                  },
+                                  onEdit: () => _editExpense(item),
+                                );
+                              },
                             ),
                           );
-                        }),
-                      ],
-                    );
-                  },
-                  childCount: grouped.keys.length,
-                ),
-              ),
-            ),
+                        },
+                        childCount: todayExpenses.length,
+                      ),
+                    ),
+                  ),
 
-          // Bottom Spacing for Navigation Bar & FAB
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 100),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationButton() {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.surfaceBorder,
-            width: 1,
-          ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.textPrimary,
-              size: 20,
-            ),
-            Positioned(
-              top: -2,
-              right: -2,
-              child: Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
+                // Bottom Spacing for Navigation Bar & FAB
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 100),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

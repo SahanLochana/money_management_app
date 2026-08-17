@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:money_management_app/models/transaction_model.dart';
+import 'package:money_management_app/domain/models/category.dart';
+import 'package:money_management_app/domain/models/expense.dart';
+import 'package:money_management_app/domain/models/wallet.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
 
 class TransactionCard extends StatelessWidget {
-  final Transaction transaction;
+  final Expense expense;
+  final Category? category;
+  final Wallet? wallet;
   final VoidCallback? onTap;
 
   const TransactionCard({
     super.key,
-    required this.transaction,
+    required this.expense,
+    this.category,
+    this.wallet,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isIncome = transaction.isIncome;
+    final catColor = CategoryUIHelper.getColor(category);
+    final catIcon = CategoryUIHelper.getIcon(category);
+    final categoryName = category?.name ?? 'Expense';
+    final walletName = wallet?.name ?? 'Wallet';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -37,18 +47,25 @@ class TransactionCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Category Icon with tinted background
+                // Category Icon / Emoji with tinted background
                 Container(
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: transaction.iconColor.withValues(alpha: 0.15),
+                    color: catColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    transaction.icon,
-                    color: transaction.iconColor,
-                    size: 22,
+                  child: Center(
+                    child: category?.emoji != null && category!.emoji.isNotEmpty
+                        ? Text(
+                            category!.emoji,
+                            style: const TextStyle(fontSize: 20),
+                          )
+                        : Icon(
+                            catIcon,
+                            color: catColor,
+                            size: 22,
+                          ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -59,7 +76,9 @@ class TransactionCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        transaction.title,
+                        expense.note != null && expense.note!.isNotEmpty
+                            ? expense.note!
+                            : categoryName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -73,7 +92,7 @@ class TransactionCard extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            transaction.category,
+                            categoryName,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -98,7 +117,7 @@ class TransactionCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              transaction.wallet,
+                              walletName,
                               style: const TextStyle(
                                 color: AppColors.textMuted,
                                 fontSize: 10,
@@ -117,7 +136,7 @@ class TransactionCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            transaction.time,
+                            expense.expenseTime,
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 12,
@@ -132,9 +151,9 @@ class TransactionCard extends StatelessWidget {
 
                 // Amount
                 Text(
-                  transaction.formattedAmount,
-                  style: TextStyle(
-                    color: isIncome ? AppColors.income : AppColors.expense,
+                  '-${expense.formattedAmount}',
+                  style: const TextStyle(
+                    color: AppColors.expense,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
