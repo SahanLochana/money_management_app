@@ -21,9 +21,36 @@ import 'package:money_management_app/presentation/blocs/expense/expense_event.da
 import 'package:money_management_app/presentation/blocs/reminder/reminder_bloc.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_bloc.dart';
+import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/main_shell.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/services/notification_service.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void _handleNotificationPayload(String? payload) {
+  if (payload == null || payload.isEmpty) return;
+  try {
+    final parts = payload.split('|');
+    if (parts.isNotEmpty) {
+      final categoryId = int.tryParse(parts[0]);
+      final amountCents = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+      final double amount = amountCents / 100.0;
+
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (context) => AddTransactionPage(
+            initialCategoryId: categoryId,
+            initialAmount: amount > 0 ? amount : null,
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    debugPrint('Error navigating from notification payload: $e');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +69,14 @@ void main() async {
   await appDb.database;
 
   // Initialize Notification Service
-  await NotificationService.instance.initialize();
+  await NotificationService.instance.initialize(
+    onDidReceiveNotificationResponse: (response) {
+      _handleNotificationPayload(response.payload);
+    },
+  );
+
+  // Request Android Notification Permissions
+  await NotificationService.instance.requestPermissions();
 
   // Datasources
   final expenseDatasource = ExpenseLocalDatasource(appDatabase: appDb);
@@ -55,6 +89,22 @@ void main() async {
   final categoryRepository = CategoryRepositoryImpl(localDatasource: categoryDatasource);
   final walletRepository = WalletRepositoryImpl(localDatasource: walletDatasource);
   final reminderRepository = ReminderRepositoryImpl(localDatasource: reminderDatasource);
+
+  // Re-sync all active daily reminders with the system alarm manager
+  try {
+    final activeReminders = await reminderRepository.getAllReminders();
+    for (final slot in activeReminders) {
+      if (slot.isActive && slot.id != null) {
+        final cat = await categoryRepository.getCategoryById(slot.categoryId);
+        await NotificationService.instance.scheduleDailyReminder(
+          slot,
+          cat?.name ?? 'Expense Reminder',
+        );
+      }
+    }
+  } catch (e) {
+    debugPrint('Error re-syncing startup reminders: $e');
+  }
 
   runApp(
     MyApp(
@@ -118,8 +168,19 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: MaterialApp(
+          navigatorKey: navigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'Vault',
+          builder: (context, child) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final pending = NotificationService.instance.pendingPayload;
+              if (pending != null) {
+                NotificationService.instance.clearPendingPayload();
+                _handleNotificationPayload(pending);
+              }
+            });
+            return child ?? const SizedBox.shrink();
+          },
           theme: ThemeData(
             brightness: Brightness.dark,
             scaffoldBackgroundColor: AppColors.background,

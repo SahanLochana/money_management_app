@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_management_app/presentation/blocs/stats/stats_bloc.dart';
+import 'package:money_management_app/presentation/blocs/stats/stats_event.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/history_page.dart';
 import 'package:money_management_app/presentation/screens/homepage.dart';
@@ -68,6 +71,16 @@ class _MainShellState extends State<MainShell> {
                 setState(() {
                   _currentIndex = index;
                 });
+                // Reload stats data when switching to the Stats tab
+                if (index == 1) {
+                  final now = DateTime.now();
+                  context.read<StatsBloc>().add(
+                        LoadMonthlyStatsEvent(
+                          year: now.year,
+                          month: now.month,
+                        ),
+                      );
+                }
               },
               type: BottomNavigationBarType.fixed,
               backgroundColor: Colors.transparent,

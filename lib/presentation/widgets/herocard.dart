@@ -168,7 +168,7 @@ class TodaySpentCard extends StatelessWidget {
                 ],
               ),
               Text(
-                "Daily limit: ₹${dailyBudget.toStringAsFixed(0)}",
+                "Daily limit: Rs ${dailyBudget.toStringAsFixed(0)}",
                 style: const TextStyle(
                   color: AppColors.textMuted,
                   fontSize: 12,

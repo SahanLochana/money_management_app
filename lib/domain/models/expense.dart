@@ -27,7 +27,7 @@ class Expense {
 
   double get amount => amountCents / 100.0;
 
-  String get formattedAmount => '₹${amount.toStringAsFixed(0)}';
+  String get formattedAmount => 'Rs ${amount.toStringAsFixed(0)}';
 
   Expense copyWith({
     int? id,

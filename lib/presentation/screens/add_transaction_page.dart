@@ -16,11 +16,15 @@ enum TransactionMode { expense, income, transfer }
 class AddTransactionPage extends StatefulWidget {
   final Expense? expenseToEdit;
   final TransactionMode initialMode;
+  final int? initialCategoryId;
+  final double? initialAmount;
 
   const AddTransactionPage({
     super.key,
     this.expenseToEdit,
     this.initialMode = TransactionMode.expense,
+    this.initialCategoryId,
+    this.initialAmount,
   });
 
   @override
@@ -68,6 +72,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _selectedTime = TimeOfDay.now();
       }
     } else {
+      if (widget.initialAmount != null && widget.initialAmount! > 0) {
+        _amountController.text = widget.initialAmount!.toStringAsFixed(0);
+      }
       _selectedDate = DateTime.now();
       _selectedTime = TimeOfDay.now();
       _loadLastUsedWallet();
@@ -271,6 +278,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
           if (isEditMode && _selectedCategory == null) {
             _selectedCategory = state.getCategory(widget.expenseToEdit!.categoryId);
+          } else if (_selectedCategory == null && widget.initialCategoryId != null) {
+            _selectedCategory = state.getCategory(widget.initialCategoryId!);
           }
           if (isEditMode && _selectedWallet == null) {
             _selectedWallet = state.getWallet(widget.expenseToEdit!.walletId);
@@ -429,7 +438,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                "₹ ",
+                "Rs ",
                 style: TextStyle(
                   color: _accentColor,
                   fontSize: 28,

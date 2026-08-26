@@ -291,7 +291,7 @@ class _StatsPageState extends State<StatsPage> {
                 ),
               ),
               Text(
-                "Total: ₹${totalSpend.toStringAsFixed(0)}",
+                "Total: Rs ${totalSpend.toStringAsFixed(0)}",
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 14,
@@ -365,7 +365,7 @@ class _StatsPageState extends State<StatsPage> {
                       ),
                     ),
                     Text(
-                      "₹${totalSpend.toStringAsFixed(0)}",
+                      "Rs ${totalSpend.toStringAsFixed(0)}",
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 17,
@@ -448,7 +448,7 @@ class _StatsPageState extends State<StatsPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "₹${w.amount.toStringAsFixed(0)}",
+                          "Rs ${w.amount.toStringAsFixed(0)}",
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 15,
@@ -536,7 +536,7 @@ class _StatsPageState extends State<StatsPage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  "₹${item.amount.toStringAsFixed(0)}",
+                  "Rs ${item.amount.toStringAsFixed(0)}",
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 14,

@@ -60,7 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
           keyboardType: TextInputType.number,
           style: const TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
-            prefixText: "₹ ",
+            prefixText: "Rs ",
             prefixStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
             filled: true,
             fillColor: AppColors.surfaceLight,
@@ -413,7 +413,7 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.track_changes_rounded,
             iconColor: AppColors.warning,
             title: "Daily Budget Target",
-            subtitle: "₹${_dailyBudget.toStringAsFixed(0)} / day",
+            subtitle: "Rs ${_dailyBudget.toStringAsFixed(0)} / day",
             onTap: _editDailyBudgetDialog,
           ),
 
