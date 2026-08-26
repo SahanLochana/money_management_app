@@ -13,7 +13,9 @@ import 'package:money_management_app/presentation/blocs/reminder/reminder_bloc.d
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/reminder_card.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
+import 'package:money_management_app/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -42,7 +44,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _editDailyBudgetDialog() async {
-    final controller = TextEditingController(text: _dailyBudget.toStringAsFixed(0));
+    final controller = TextEditingController(
+      text: _dailyBudget.toStringAsFixed(0),
+    );
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
@@ -53,7 +57,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         title: const Text(
           "Edit Daily Budget",
-          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: TextField(
           controller: controller,
@@ -61,7 +68,10 @@ class _SettingsPageState extends State<SettingsPage> {
           style: const TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
             prefixText: "Rs ",
-            prefixStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+            prefixStyle: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
             filled: true,
             fillColor: AppColors.surfaceLight,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -70,7 +80,10 @@ class _SettingsPageState extends State<SettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -81,7 +94,10 @@ class _SettingsPageState extends State<SettingsPage> {
               backgroundColor: AppColors.primary,
               foregroundColor: const Color(0xFF0F0F14),
             ),
-            child: const Text("Save", style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text(
+              "Save",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -97,7 +113,18 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _addCategoryDialog() async {
     final nameCtrl = TextEditingController();
     String selectedEmoji = '🏷️';
-    final emojis = ['☕', '🍕', '🚗', '🛍️', '💊', '🎮', '📚', '🏋️', '✈️', '🏷️'];
+    final emojis = [
+      '☕',
+      '🍕',
+      '🚗',
+      '🛍️',
+      '💊',
+      '🎮',
+      '📚',
+      '🏋️',
+      '✈️',
+      '🏷️',
+    ];
 
     final created = await showDialog<Category>(
       context: context,
@@ -110,13 +137,19 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           title: const Text(
             "Add Custom Category",
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Choose Emoji", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const Text(
+                "Choose Emoji",
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -127,9 +160,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : AppColors.surfaceLight,
+                        color: isSelected
+                            ? AppColors.primary.withValues(alpha: 0.2)
+                            : AppColors.surfaceLight,
                         shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: AppColors.primary) : null,
+                        border: isSelected
+                            ? Border.all(color: AppColors.primary)
+                            : null,
                       ),
                       child: Text(e, style: const TextStyle(fontSize: 18)),
                     ),
@@ -137,7 +174,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 }).toList(),
               ),
               const SizedBox(height: 16),
-              const Text("Category Name", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const Text(
+                "Category Name",
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: nameCtrl,
@@ -147,7 +187,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   hintStyle: const TextStyle(color: AppColors.textMuted),
                   filled: true,
                   fillColor: AppColors.surfaceLight,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -155,7 +197,10 @@ class _SettingsPageState extends State<SettingsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -163,11 +208,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 if (name.isNotEmpty) {
                   Navigator.pop(
                     context,
-                    Category(
-                      name: name,
-                      emoji: selectedEmoji,
-                      isSystem: false,
-                    ),
+                    Category(name: name, emoji: selectedEmoji, isSystem: false),
                   );
                 }
               },
@@ -175,7 +216,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: const Color(0xFF0F0F14),
               ),
-              child: const Text("Add", style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text(
+                "Add",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -187,9 +231,373 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<bool> _ensureNotificationPermission() async {
+    final hasPerm = await NotificationService.instance
+        .hasNotificationPermission();
+    if (hasPerm) return true;
+
+    final granted = await NotificationService.instance.requestPermissions();
+    if (granted) return true;
+
+    if (!mounted) return false;
+
+    final permanentlyDenied = await NotificationService.instance
+        .isPermissionPermanentlyDenied();
+    if (!mounted) return false;
+
+    final reminderBloc = context.read<ReminderBloc>();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.notifications_off_outlined,
+              color: AppColors.warning,
+              size: 24,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Notifications Disabled",
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          permanentlyDenied
+              ? "Notification permission is required to receive daily reminders. Please allow notifications in App Settings to enable reminders."
+              : "Notification permission is required to send daily reminders. Reminders will stay turned off until permission is granted.",
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          if (permanentlyDenied)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                NotificationService.instance.openSettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: const Color(0xFF0F0F14),
+              ),
+              child: const Text(
+                "Open Settings",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            )
+          else
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final retryGranted = await NotificationService.instance
+                    .requestPermissions();
+                if (retryGranted) {
+                  reminderBloc.add(const LoadRemindersEvent());
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: const Color(0xFF0F0F14),
+              ),
+              child: const Text(
+                "Allow",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+      ),
+    );
+    return false;
+  }
+
+  Future<void> _addReminderDialog() async {
+    final catState = context.read<CategoryBloc>().state;
+    final List<Category> categories = (catState is CategoryLoaded)
+        ? catState.categories
+        : <Category>[];
+
+    if (categories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Please add a category first"),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
+    int selectedCatId = categories.first.id ?? 1;
+    TimeOfDay selectedTime = const TimeOfDay(hour: 12, minute: 0);
+    final amountCtrl = TextEditingController();
+
+    final created = await showDialog<ReminderSlot>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColors.surfaceBorder),
+          ),
+          title: const Text(
+            "Add Daily Reminder",
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Category",
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.surfaceBorder),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: selectedCatId,
+                      isExpanded: true,
+                      dropdownColor: AppColors.surface,
+                      items: categories.map((c) {
+                        return DropdownMenuItem<int>(
+                          value: c.id,
+                          child: Row(
+                            children: [
+                              Text(
+                                c.emoji,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  c.name,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedCatId = val);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Reminder Time",
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                      builder: (context, child) {
+                        return Theme(
+                          data: ThemeData.dark().copyWith(
+                            colorScheme: const ColorScheme.dark(
+                              primary: AppColors.primary,
+                              surface: AppColors.surface,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.surfaceBorder),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Text(
+                          "Change",
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Default Amount (Optional)",
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: "0.00",
+                    hintStyle: const TextStyle(color: AppColors.textMuted),
+                    prefixText: "Rs ",
+                    prefixStyle: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+                final timeStr =
+                    '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+                Navigator.pop(
+                  context,
+                  ReminderSlot(
+                    categoryId: selectedCatId,
+                    time: timeStr,
+                    defaultAmountCents: (amt * 100).toInt(),
+                    isActive: true,
+                    isSystem: false,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: const Color(0xFF0F0F14),
+              ),
+              child: const Text(
+                "Add",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (created != null && mounted) {
+      final allowed = await _ensureNotificationPermission();
+      final slotToAdd = allowed ? created : created.copyWith(isActive: false);
+      if (mounted) {
+        context.read<ReminderBloc>().add(AddReminderEvent(slotToAdd));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              allowed
+                  ? "Reminder added"
+                  : "Reminder added (toggled off until notifications are allowed)",
+            ),
+            backgroundColor: AppColors.surfaceLight,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _editReminderTime(ReminderSlot slot) async {
     final parts = slot.time.split(':');
-    final initialTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    final initialTime = TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
 
     final picked = await showTimePicker(
       context: context,
@@ -210,8 +618,74 @@ class _SettingsPageState extends State<SettingsPage> {
     if (picked != null && mounted) {
       final timeStr =
           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-      final updated = slot.copyWith(time: timeStr);
-      context.read<ReminderBloc>().add(UpdateReminderEvent(updated));
+      var updated = slot.copyWith(time: timeStr);
+      if (updated.isActive) {
+        final allowed = await _ensureNotificationPermission();
+        if (!allowed) {
+          updated = updated.copyWith(isActive: false);
+        }
+      }
+      if (mounted) {
+        context.read<ReminderBloc>().add(UpdateReminderEvent(updated));
+      }
+    }
+  }
+
+  Future<void> _deleteReminderDialog(ReminderSlot slot, String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Text(
+          "Delete Reminder?",
+          style: TextStyle(
+            color: AppColors.expense,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to delete the '$title' at ${slot.time}?",
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text(
+              "Delete",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted && slot.id != null) {
+      context.read<ReminderBloc>().add(DeleteReminderEvent(slot.id!));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Deleted '$title'"),
+          backgroundColor: AppColors.surfaceLight,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     }
   }
 
@@ -226,7 +700,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         title: const Text(
           "Clear All Data?",
-          style: TextStyle(color: AppColors.expense, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: AppColors.expense,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: const Text(
           "This will delete all your local expense records. This action cannot be undone.",
@@ -235,7 +712,10 @@ class _SettingsPageState extends State<SettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -243,7 +723,10 @@ class _SettingsPageState extends State<SettingsPage> {
               backgroundColor: AppColors.expense,
               foregroundColor: Colors.white,
             ),
-            child: const Text("Clear All", style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text(
+              "Clear All",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -256,7 +739,9 @@ class _SettingsPageState extends State<SettingsPage> {
           content: const Text("All expense data cleared"),
           backgroundColor: AppColors.surfaceLight,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -278,12 +763,19 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           title: const Text(
             "Exported JSON Data",
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           content: SingleChildScrollView(
             child: SelectableText(
               jsonString,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontFamily: 'monospace'),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              ),
             ),
           ),
           actions: [
@@ -293,7 +785,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: const Color(0xFF0F0F14),
               ),
-              child: const Text("Done", style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text(
+                "Done",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -312,7 +807,10 @@ class _SettingsPageState extends State<SettingsPage> {
         centerTitle: false,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -330,7 +828,11 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         children: [
           // Daily Reminders Section
-          const SectionHeader(title: "Daily Reminders"),
+          SectionHeader(
+            title: "Daily Reminders",
+            actionLabel: "+ Add Reminder",
+            onActionTap: _addReminderDialog,
+          ),
           const SizedBox(height: 8),
           BlocBuilder<ReminderBloc, ReminderState>(
             builder: (context, state) {
@@ -344,23 +846,78 @@ class _SettingsPageState extends State<SettingsPage> {
               }
 
               if (state is ReminderLoaded) {
+                if (state.reminders.isEmpty) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 20,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.notifications_none_rounded,
+                            color: AppColors.textMuted,
+                            size: 28,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "No reminders yet",
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Tap '+ Add Reminder' to set daily reminders",
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return Column(
                   children: state.reminders.map((slot) {
                     final cat = state.getCategory(slot.categoryId);
-                    final title = '${cat?.name ?? "Meal"} Reminder';
+                    final title =
+                        '${cat?.emoji ?? "⏰"} ${cat?.name ?? "Meal"} Reminder';
 
-                    return _buildReminderCard(
+                    return ReminderCard(
                       title: title,
                       time: slot.time,
                       value: slot.isActive,
-                      onChanged: (val) {
+                      onChanged: (val) async {
+                        final reminderBloc = context.read<ReminderBloc>();
+                        if (val) {
+                          final allowed = await _ensureNotificationPermission();
+                          if (!allowed) {
+                            if (mounted) setState(() {});
+                            return;
+                          }
+                        }
                         if (slot.id != null) {
-                          context.read<ReminderBloc>().add(
-                                ToggleReminderEvent(id: slot.id!, isActive: val),
-                              );
+                          reminderBloc.add(
+                            ToggleReminderEvent(id: slot.id!, isActive: val),
+                          );
                         }
                       },
                       onTimeTap: () => _editReminderTime(slot),
+                      onDelete: () => _deleteReminderDialog(slot, title),
                     );
                   }).toList(),
                 );
@@ -387,7 +944,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     content: Text(state.message),
                     backgroundColor: AppColors.expense,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 );
               }
@@ -443,67 +1002,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildReminderCard({
-    required String title,
-    required String time,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-    required VoidCallback onTimeTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceBorder.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: onTimeTap,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(
-                      time,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.edit_outlined, size: 12, color: AppColors.textMuted),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-            inactiveThumbColor: AppColors.textMuted,
-            inactiveTrackColor: AppColors.surfaceLight,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildCategoryItemTile(Category cat) {
     return Container(
@@ -512,7 +1010,9 @@ class _SettingsPageState extends State<SettingsPage> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.surfaceBorder.withValues(alpha: 0.6)),
+        border: Border.all(
+          color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+        ),
       ),
       child: Row(
         children: [
@@ -536,18 +1036,31 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.lock_outline_rounded, size: 12, color: AppColors.textMuted),
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 12,
+                    color: AppColors.textMuted,
+                  ),
                   SizedBox(width: 4),
-                  Text("System", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  Text(
+                    "System",
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
                 ],
               ),
             )
           else
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.expense, size: 18),
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.expense,
+                size: 18,
+              ),
               onPressed: () {
                 if (cat.id != null) {
-                  context.read<CategoryBloc>().add(DeleteCategoryEvent(cat.id!));
+                  context.read<CategoryBloc>().add(
+                    DeleteCategoryEvent(cat.id!),
+                  );
                 }
               },
             ),
@@ -575,7 +1088,9 @@ class _SettingsPageState extends State<SettingsPage> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.surfaceBorder.withValues(alpha: 0.6)),
+              border: Border.all(
+                color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+              ),
             ),
             child: Row(
               children: [

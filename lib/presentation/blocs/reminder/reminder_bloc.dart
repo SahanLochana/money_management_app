@@ -39,11 +39,22 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     Emitter<ReminderState> emit,
   ) async {
     try {
-      final id = await reminderRepository.addReminder(event.slot);
-      final cat = await categoryRepository.getCategoryById(event.slot.categoryId);
-      if (event.slot.isActive) {
+      var slotToSave = event.slot;
+      if (slotToSave.isActive) {
+        final hasPerm = await NotificationService.instance.hasNotificationPermission();
+        if (!hasPerm) {
+          final granted = await NotificationService.instance.requestPermissions();
+          if (!granted) {
+            slotToSave = slotToSave.copyWith(isActive: false);
+          }
+        }
+      }
+
+      final id = await reminderRepository.addReminder(slotToSave);
+      final cat = await categoryRepository.getCategoryById(slotToSave.categoryId);
+      if (slotToSave.isActive) {
         await NotificationService.instance.scheduleReminder(
-          event.slot.copyWith(id: id),
+          slotToSave.copyWith(id: id),
           cat?.name ?? 'Expense Reminder',
         );
       }
@@ -58,16 +69,27 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     Emitter<ReminderState> emit,
   ) async {
     try {
-      await reminderRepository.updateReminder(event.slot);
-      if (event.slot.id != null) {
-        final cat = await categoryRepository.getCategoryById(event.slot.categoryId);
-        if (event.slot.isActive) {
+      var slotToUpdate = event.slot;
+      if (slotToUpdate.isActive) {
+        final hasPerm = await NotificationService.instance.hasNotificationPermission();
+        if (!hasPerm) {
+          final granted = await NotificationService.instance.requestPermissions();
+          if (!granted) {
+            slotToUpdate = slotToUpdate.copyWith(isActive: false);
+          }
+        }
+      }
+
+      await reminderRepository.updateReminder(slotToUpdate);
+      if (slotToUpdate.id != null) {
+        final cat = await categoryRepository.getCategoryById(slotToUpdate.categoryId);
+        if (slotToUpdate.isActive) {
           await NotificationService.instance.scheduleReminder(
-            event.slot,
+            slotToUpdate,
             cat?.name ?? 'Expense Reminder',
           );
         } else {
-          await NotificationService.instance.cancelReminder(event.slot.id!);
+          await NotificationService.instance.cancelReminder(slotToUpdate.id!);
         }
       }
       add(const LoadRemindersEvent());
@@ -94,8 +116,19 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     Emitter<ReminderState> emit,
   ) async {
     try {
-      await reminderRepository.toggleReminder(event.id, event.isActive);
-      if (event.isActive) {
+      bool targetActive = event.isActive;
+      if (targetActive) {
+        final hasPerm = await NotificationService.instance.hasNotificationPermission();
+        if (!hasPerm) {
+          final granted = await NotificationService.instance.requestPermissions();
+          if (!granted) {
+            targetActive = false;
+          }
+        }
+      }
+
+      await reminderRepository.toggleReminder(event.id, targetActive);
+      if (targetActive) {
         final reminders = await reminderRepository.getAllReminders();
         final slot = reminders.firstWhere((r) => r.id == event.id);
         final cat = await categoryRepository.getCategoryById(slot.categoryId);

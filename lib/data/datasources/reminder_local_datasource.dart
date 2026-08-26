@@ -38,7 +38,7 @@ class ReminderLocalDatasource {
     final db = await _db;
     return await db.delete(
       AppTables.reminderSlots,
-      where: '${AppTables.colReminderId} = ? AND ${AppTables.colReminderIsSystem} = 0',
+      where: '${AppTables.colReminderId} = ?',
       whereArgs: [id],
     );
   }

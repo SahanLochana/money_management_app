@@ -29,11 +29,23 @@ class NotificationService {
 
     try {
       tz.initializeTimeZones();
-      final dynamic tzResult = await FlutterTimezone.getLocalTimezone();
-      final String timeZoneName = tzResult is String ? tzResult : (tzResult.name ?? tzResult.id ?? tzResult.toString());
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      String timeZoneName;
+      try {
+        final dynamic tzResult = await FlutterTimezone.getLocalTimezone();
+        timeZoneName = tzResult is String
+            ? tzResult
+            : (tzResult.name ?? tzResult.id ?? tzResult.toString());
+      } catch (e) {
+        timeZoneName = 'UTC';
+      }
+      try {
+        tz.setLocalLocation(tz.getLocation(timeZoneName));
+        debugPrint('Timezone initialized to: $timeZoneName (currentTime: ${tz.TZDateTime.now(tz.local)})');
+      } catch (e) {
+        debugPrint('Failed to set timezone ($timeZoneName), falling back to UTC: $e');
+      }
     } catch (e) {
-      debugPrint('Failed to set local timezone ($e), falling back to tz.local');
+      debugPrint('Timezone initialization error: $e');
     }
 
     // 2. Initialize notification settings
@@ -52,6 +64,22 @@ class NotificationService {
       },
     );
 
+    // Create the notification channel explicitly on Android
+    final androidPlugin = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'meal_reminders_channel',
+          'Meal Reminders',
+          description: 'Daily expense reminders for meal times',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    }
+
     // 3. Check if app was launched via notification tap
     final details = await _notificationsPlugin.getNotificationAppLaunchDetails();
     if (details != null && details.didNotificationLaunchApp) {
@@ -61,6 +89,50 @@ class NotificationService {
     }
 
     _isInitialized = true;
+  }
+
+  Future<bool> hasNotificationPermission() async {
+    try {
+      final status = await Permission.notification.status;
+      return status.isGranted;
+    } catch (e) {
+      debugPrint('Error checking notification permission: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isPermissionPermanentlyDenied() async {
+    try {
+      return await Permission.notification.isPermanentlyDenied;
+    } catch (e) {
+      debugPrint('Error checking if permission is permanently denied: $e');
+      return false;
+    }
+  }
+
+  Future<bool> canScheduleExactAlarms() async {
+    try {
+      return await Permission.scheduleExactAlarm.isGranted;
+    } catch (e) {
+      debugPrint('Error checking exact alarms permission: $e');
+      return true;
+    }
+  }
+
+  Future<void> requestExactAlarmsPermission() async {
+    try {
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        await androidPlugin.requestExactAlarmsPermission();
+      }
+    } catch (e) {
+      debugPrint('Error requesting exact alarms permission: $e');
+    }
+  }
+
+  Future<bool> openSettings() async {
+    return await openAppSettings();
   }
 
   Future<bool> requestPermissions() async {
