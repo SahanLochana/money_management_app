@@ -47,9 +47,7 @@ void _handleNotificationPayload(String? payload) {
         ),
       );
     }
-  } catch (e) {
-    debugPrint('Error navigating from notification payload: $e');
-  }
+  } catch (_) {}
 }
 
 void main() async {
@@ -102,9 +100,7 @@ void main() async {
         );
       }
     }
-  } catch (e) {
-    debugPrint('Error re-syncing startup reminders: $e');
-  }
+  } catch (_) {}
 
   runApp(
     MyApp(

@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_management_app/domain/repositories/category_repository.dart';
 import 'package:money_management_app/domain/repositories/reminder_repository.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_state.dart';
 import 'package:money_management_app/services/notification_service.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
   final ReminderRepository reminderRepository;
@@ -43,25 +41,17 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     try {
       var slotToSave = event.slot;
       if (slotToSave.isActive) {
-        // Check notification permission
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
           final granted = await NotificationService.instance.requestPermissions();
           if (!granted) {
-            debugPrint('[ReminderBloc] Add: notification permission denied – saving as inactive.');
             slotToSave = slotToSave.copyWith(isActive: false);
           }
         }
-        // FIX: also check exact-alarm permission independently
         if (slotToSave.isActive) {
           final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
-          debugPrint('[ReminderBloc] Add: exactAlarm granted=$exactGranted');
           if (!exactGranted) {
-            debugPrint('[ReminderBloc] Add: requesting exact-alarm permission.');
             await NotificationService.instance.requestExactAlarmsPermission();
-            // Re-check after request (user may have just granted it)
-            final recheck = await Permission.scheduleExactAlarm.isGranted;
-            debugPrint('[ReminderBloc] Add: exactAlarm after request=$recheck');
           }
         }
       }
@@ -87,23 +77,17 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     try {
       var slotToUpdate = event.slot;
       if (slotToUpdate.isActive) {
-        // Check notification permission
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
           final granted = await NotificationService.instance.requestPermissions();
           if (!granted) {
-            debugPrint('[ReminderBloc] Update: notification permission denied – saving as inactive.');
             slotToUpdate = slotToUpdate.copyWith(isActive: false);
           }
         }
-        // FIX: also check exact-alarm permission independently
         if (slotToUpdate.isActive) {
           final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
-          debugPrint('[ReminderBloc] Update: exactAlarm granted=$exactGranted');
           if (!exactGranted) {
             await NotificationService.instance.requestExactAlarmsPermission();
-            final recheck = await Permission.scheduleExactAlarm.isGranted;
-            debugPrint('[ReminderBloc] Update: exactAlarm after request=$recheck');
           }
         }
       }
@@ -146,23 +130,17 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     try {
       bool targetActive = event.isActive;
       if (targetActive) {
-        // Check notification permission
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
           final granted = await NotificationService.instance.requestPermissions();
           if (!granted) {
-            debugPrint('[ReminderBloc] Toggle: notification permission denied – keeping inactive.');
             targetActive = false;
           }
         }
-        // FIX: also check exact-alarm permission independently
         if (targetActive) {
           final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
-          debugPrint('[ReminderBloc] Toggle: exactAlarm granted=$exactGranted');
           if (!exactGranted) {
             await NotificationService.instance.requestExactAlarmsPermission();
-            final recheck = await Permission.scheduleExactAlarm.isGranted;
-            debugPrint('[ReminderBloc] Toggle: exactAlarm after request=$recheck');
           }
         }
       }
