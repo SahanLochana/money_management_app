@@ -63,6 +63,29 @@ class NotificationService {
     _isInitialized = true;
   }
 
+  Future<bool> hasNotificationPermission() async {
+    try {
+      final status = await Permission.notification.status;
+      return status.isGranted;
+    } catch (e) {
+      debugPrint('Error checking notification permission: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isPermissionPermanentlyDenied() async {
+    try {
+      return await Permission.notification.isPermanentlyDenied;
+    } catch (e) {
+      debugPrint('Error checking if permission is permanently denied: $e');
+      return false;
+    }
+  }
+
+  Future<bool> openSettings() async {
+    return await openAppSettings();
+  }
+
   Future<bool> requestPermissions() async {
     try {
       final androidPlugin = _notificationsPlugin
