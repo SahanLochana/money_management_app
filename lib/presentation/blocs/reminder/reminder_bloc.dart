@@ -48,6 +48,12 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
             slotToSave = slotToSave.copyWith(isActive: false);
           }
         }
+        if (slotToSave.isActive) {
+          final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
+          if (!exactGranted) {
+            await NotificationService.instance.requestExactAlarmsPermission();
+          }
+        }
       }
 
       final id = await reminderRepository.addReminder(slotToSave);
@@ -76,6 +82,12 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
           final granted = await NotificationService.instance.requestPermissions();
           if (!granted) {
             slotToUpdate = slotToUpdate.copyWith(isActive: false);
+          }
+        }
+        if (slotToUpdate.isActive) {
+          final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
+          if (!exactGranted) {
+            await NotificationService.instance.requestExactAlarmsPermission();
           }
         }
       }
@@ -123,6 +135,12 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
           final granted = await NotificationService.instance.requestPermissions();
           if (!granted) {
             targetActive = false;
+          }
+        }
+        if (targetActive) {
+          final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
+          if (!exactGranted) {
+            await NotificationService.instance.requestExactAlarmsPermission();
           }
         }
       }

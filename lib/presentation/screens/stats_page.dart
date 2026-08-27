@@ -303,79 +303,78 @@ class _StatsPageState extends State<StatsPage> {
           const SizedBox(height: 20),
           SizedBox(
             height: 200,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (nonZeroCategories.isEmpty)
-                  Center(
+            child: nonZeroCategories.isEmpty
+                ? const Center(
                     child: Text(
                       "No expenses recorded",
                       style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   )
-                else
-                  PieChart(
-                    PieChartData(
-                      pieTouchData: PieTouchData(
-                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                          setState(() {
-                            if (!event.isInterestedForInteractions ||
-                                pieTouchResponse == null ||
-                                pieTouchResponse.touchedSection == null) {
-                              _touchedIndex = -1;
-                              return;
-                            }
-                            _touchedIndex =
-                                pieTouchResponse.touchedSection!.touchedSectionIndex;
-                          });
-                        },
-                      ),
-                      borderData: FlBorderData(show: false),
-                      sectionsSpace: 3,
-                      centerSpaceRadius: 55,
-                      sections: nonZeroCategories.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        final item = entry.value;
-                        final isTouched = i == _touchedIndex;
-                        final radius = isTouched ? 38.0 : 30.0;
-                        final color = CategoryUIHelper.getColor(item.category);
-
-                        return PieChartSectionData(
-                          color: color,
-                          value: item.amount,
-                          title: '${item.percentage.round()}%',
-                          radius: radius,
-                          titleStyle: TextStyle(
-                            fontSize: isTouched ? 13 : 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PieChart(
+                        PieChartData(
+                          pieTouchData: PieTouchData(
+                            touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                              setState(() {
+                                if (!event.isInterestedForInteractions ||
+                                    pieTouchResponse == null ||
+                                    pieTouchResponse.touchedSection == null) {
+                                  _touchedIndex = -1;
+                                  return;
+                                }
+                                _touchedIndex =
+                                    pieTouchResponse.touchedSection!.touchedSectionIndex;
+                              });
+                            },
                           ),
-                        );
-                      }).toList(),
-                    ),
+                          borderData: FlBorderData(show: false),
+                          sectionsSpace: 3,
+                          centerSpaceRadius: 55,
+                          sections: nonZeroCategories.asMap().entries.map((entry) {
+                            final i = entry.key;
+                            final item = entry.value;
+                            final isTouched = i == _touchedIndex;
+                            final radius = isTouched ? 38.0 : 30.0;
+                            final color = CategoryUIHelper.getColor(item.category);
+
+                            return PieChartSectionData(
+                              color: color,
+                              value: item.amount,
+                              title: '${item.percentage.round()}%',
+                              radius: radius,
+                              titleStyle: TextStyle(
+                                fontSize: isTouched ? 13 : 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            "Spent",
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            "Rs ${totalSpend.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Spent",
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      "Rs ${totalSpend.toStringAsFixed(0)}",
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
           ),
         ],
       ),

@@ -3,12 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:money_management_app/domain/models/category.dart';
 import 'package:money_management_app/domain/models/expense.dart';
+import 'package:money_management_app/domain/models/income_category.dart';
 import 'package:money_management_app/domain/models/wallet.dart';
+import 'package:money_management_app/domain/models/wallet_fund.dart';
+import 'package:money_management_app/domain/models/wallet_transfer.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
+import 'package:money_management_app/presentation/screens/manage_categories_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
+import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum TransactionMode { expense, income, transfer }
@@ -41,6 +48,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   Category? _selectedCategory;
   Wallet? _selectedWallet;
+
+  // For Income Mode
+  List<IncomeCategory> _incomeCategories = [];
+  IncomeCategory? _selectedIncomeCategory;
 
   // For Transfer Mode
   Wallet? _fromWallet;
@@ -78,6 +89,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _selectedDate = DateTime.now();
       _selectedTime = TimeOfDay.now();
       _loadLastUsedWallet();
+    }
+    _loadIncomeCategories();
+  }
+
+  Future<void> _loadIncomeCategories() async {
+    final cats = await IncomeCategory.loadAll();
+    if (mounted) {
+      setState(() {
+        _incomeCategories = cats;
+        _selectedIncomeCategory ??= cats.firstOrNull;
+      });
     }
   }
 
@@ -174,40 +196,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final parsedAmount = double.tryParse(amountText);
 
     if (parsedAmount == null || parsedAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Amount must be greater than 0"),
-          backgroundColor: AppColors.expense,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      AppSnackBar.show(context, message: "Amount must be greater than 0", isError: true);
       return;
     }
 
     final category = _selectedCategory ?? categories.firstOrNull;
-    if (category == null && _mode != TransactionMode.transfer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Please select a category"),
-          backgroundColor: AppColors.expense,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+    if (category == null && _mode == TransactionMode.expense) {
+      AppSnackBar.show(context, message: "Please select a category", isError: true);
       return;
     }
 
     final wallet = _selectedWallet ?? wallets.firstOrNull;
     if (wallet == null && _mode != TransactionMode.transfer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Please select a wallet"),
-          backgroundColor: AppColors.expense,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      AppSnackBar.show(context, message: "Please select a wallet", isError: true);
       return;
     }
 
@@ -224,6 +225,68 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final timeStr =
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
     final note = _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null;
+
+    if (_mode == TransactionMode.income) {
+      final cat = _selectedIncomeCategory ?? _incomeCategories.firstOrNull;
+      final catName = cat?.name ?? "Income";
+      final fundNote = note != null ? "$catName • $note" : catName;
+
+      final fund = WalletFund(
+        walletId: wallet!.id,
+        amountCents: amountCents,
+        note: fundNote,
+        createdAt: DateTime.now().toIso8601String(),
+      );
+
+      context.read<WalletBloc>().add(AddWalletFundsEvent(fund));
+      context.read<ExpenseBloc>().add(const LoadExpenses());
+
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Added Rs ${parsedAmount.toStringAsFixed(0)} ($catName) to ${wallet.name}",
+        );
+        Navigator.pop(context);
+      }
+      return;
+    }
+
+    if (_mode == TransactionMode.transfer) {
+      final from = _fromWallet ?? wallets.firstOrNull;
+      final to = _toWallet ?? (wallets.length > 1 ? wallets[1] : wallets.firstOrNull);
+
+      if (from == null || to == null) {
+        AppSnackBar.show(context, message: "Please select source and destination wallets", isError: true);
+        return;
+      }
+
+      if (from.id == to.id) {
+        AppSnackBar.show(context, message: "Cannot transfer to the same wallet", isError: true);
+        return;
+      }
+
+      final transfer = WalletTransfer(
+        fromWalletId: from.id,
+        toWalletId: to.id,
+        amountCents: amountCents,
+        transferDate: dateStr,
+        transferTime: timeStr,
+        note: note,
+        createdAt: DateTime.now().toIso8601String(),
+      );
+
+      context.read<WalletBloc>().add(AddWalletTransferEvent(transfer));
+      context.read<ExpenseBloc>().add(const LoadExpenses());
+
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Transferred Rs ${parsedAmount.toStringAsFixed(0)} from ${from.name} to ${to.name}",
+        );
+        Navigator.pop(context);
+      }
+      return;
+    }
 
     if (isEditMode) {
       final updated = widget.expenseToEdit!.copyWith(
@@ -251,15 +314,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEditMode ? "Expense updated successfully" : "Expense added successfully",
-          ),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      AppSnackBar.show(
+        context,
+        message: isEditMode ? "Expense updated successfully" : "Expense added successfully",
       );
       Navigator.pop(context);
     }
@@ -332,13 +389,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   if (_mode == TransactionMode.transfer) ...[
                     _buildTransferWalletsSection(wallets),
                     const SizedBox(height: 20),
+                  ] else if (_mode == TransactionMode.income) ...[
+                    // Income Categories
+                    _buildIncomeCategorySection(),
+                    const SizedBox(height: 20),
+
+                    // Wallet Selection
+                    _buildWalletSection(wallets, title: "Deposit Into Wallet"),
+                    const SizedBox(height: 20),
                   ] else ...[
-                    // Categories
+                    // Expense Categories
                     _buildCategorySection(categories),
                     const SizedBox(height: 20),
 
                     // Wallet Selection
-                    _buildWalletSection(wallets),
+                    _buildWalletSection(wallets, title: "Payment Wallet"),
                     const SizedBox(height: 20),
                   ],
 
@@ -475,84 +540,284 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
+  Future<void> _openManageCategories(CategoryTab tab) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ManageCategoriesPage(initialTab: tab),
+      ),
+    );
+    await _loadIncomeCategories();
+    if (mounted) {
+      setState(() {
+        if (_selectedIncomeCategory != null &&
+            !_incomeCategories.any((c) => c.id == _selectedIncomeCategory!.id)) {
+          _selectedIncomeCategory = _incomeCategories.firstOrNull;
+        }
+      });
+    }
+  }
+
   Widget _buildCategorySection(List<Category> categories) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Category",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Category",
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _openManageCategories(CategoryTab.expense),
+              child: const Row(
+                children: [
+                  Icon(Icons.tune_rounded, size: 14, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text(
+                    "Manage",
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: categories.map((cat) {
-            final isSelected = _selectedCategory?.id == cat.id;
-            final catColor = CategoryUIHelper.getColor(cat);
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedCategory = cat;
-                  if (!isEditMode &&
-                      cat.defaultAmountCents > 0 &&
-                      _amountController.text.isEmpty) {
-                    _amountController.text = cat.defaultAmount.toStringAsFixed(0);
-                  }
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? catColor.withValues(alpha: 0.18)
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
+          children: [
+            ...categories.map((cat) {
+              final isSelected = _selectedCategory?.id == cat.id;
+              final catColor = CategoryUIHelper.getColor(cat);
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedCategory = cat;
+                    if (!isEditMode &&
+                        cat.defaultAmountCents > 0 &&
+                        _amountController.text.isEmpty) {
+                      _amountController.text = cat.defaultAmount.toStringAsFixed(0);
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
                     color: isSelected
-                        ? catColor.withValues(alpha: 0.6)
-                        : AppColors.surfaceBorder,
-                    width: isSelected ? 1.5 : 1,
+                        ? catColor.withValues(alpha: 0.18)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? catColor.withValues(alpha: 0.6)
+                          : AppColors.surfaceBorder,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        cat.emoji,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        cat.name,
+                        style: TextStyle(
+                          color: isSelected ? catColor : AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
+              );
+            }),
+            // Manage button chip
+            GestureDetector(
+              onTap: () => _openManageCategories(CategoryTab.expense),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.surfaceBorder,
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      cat.emoji,
-                      style: const TextStyle(fontSize: 16),
+                    Icon(
+                      Icons.add_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 6),
                     Text(
-                      cat.name,
+                      "Add / Edit",
                       style: TextStyle(
-                        color: isSelected ? catColor : AppColors.textPrimary,
+                        color: AppColors.textSecondary,
                         fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          }).toList(),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildWalletSection(List<Wallet> wallets) {
+  Widget _buildIncomeCategorySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Payment Wallet",
-          style: TextStyle(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Income Source",
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _openManageCategories(CategoryTab.income),
+              child: const Row(
+                children: [
+                  Icon(Icons.tune_rounded, size: 14, color: AppColors.income),
+                  SizedBox(width: 4),
+                  Text(
+                    "Manage",
+                    style: TextStyle(
+                      color: AppColors.income,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            ..._incomeCategories.map((cat) {
+              final isSelected = _selectedIncomeCategory?.id == cat.id;
+              const catColor = AppColors.income;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedIncomeCategory = cat;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? catColor.withValues(alpha: 0.18)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? catColor.withValues(alpha: 0.6)
+                          : AppColors.surfaceBorder,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        cat.emoji,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        cat.name,
+                        style: TextStyle(
+                          color: isSelected ? catColor : AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            // + Add / Manage Income Categories Button
+            GestureDetector(
+              onTap: () => _openManageCategories(CategoryTab.income),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.income.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_rounded,
+                      size: 16,
+                      color: AppColors.income,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      "Add / Manage",
+                      style: TextStyle(
+                        color: AppColors.income,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWalletSection(List<Wallet> wallets, {String title = "Payment Wallet"}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.w700,

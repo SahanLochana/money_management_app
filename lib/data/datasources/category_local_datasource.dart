@@ -38,12 +38,48 @@ class CategoryLocalDatasource {
 
   Future<int> deleteCategory(int id) async {
     final db = await _db;
-    return await db.update(
-      AppTables.categories,
-      {AppTables.colCatIsDeleted: 1},
-      where: '${AppTables.colCatId} = ? AND ${AppTables.colCatIsSystem} = 0',
-      whereArgs: [id],
-    );
+    return await db.transaction((txn) async {
+      final otherMaps = await txn.query(
+        AppTables.categories,
+        where: '${AppTables.colCatIsDeleted} = 0 AND ${AppTables.colCatId} != ?',
+        whereArgs: [id],
+        orderBy: "CASE WHEN ${AppTables.colCatName} = 'Other' THEN 0 ELSE 1 END, ${AppTables.colCatId} ASC",
+        limit: 1,
+      );
+
+      int fallbackCategoryId;
+      if (otherMaps.isNotEmpty) {
+        fallbackCategoryId = otherMaps.first[AppTables.colCatId] as int;
+      } else {
+        fallbackCategoryId = await txn.insert(AppTables.categories, {
+          AppTables.colCatName: 'Other',
+          AppTables.colCatEmoji: '🍿',
+          AppTables.colCatDefaultAmountCents: 0,
+          AppTables.colCatIsSystem: 1,
+          AppTables.colCatIsDeleted: 0,
+        });
+      }
+
+      await txn.update(
+        AppTables.expenses,
+        {AppTables.colExpenseCategoryId: fallbackCategoryId},
+        where: '${AppTables.colExpenseCategoryId} = ?',
+        whereArgs: [id],
+      );
+
+      await txn.delete(
+        AppTables.reminderSlots,
+        where: '${AppTables.colReminderCategoryId} = ?',
+        whereArgs: [id],
+      );
+
+      return await txn.update(
+        AppTables.categories,
+        {AppTables.colCatIsDeleted: 1},
+        where: '${AppTables.colCatId} = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   Future<bool> categoryHasExpenses(int id) async {

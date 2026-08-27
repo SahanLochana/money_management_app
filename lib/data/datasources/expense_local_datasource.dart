@@ -175,6 +175,26 @@ class ExpenseLocalDatasource {
     return totals;
   }
 
+  Future<Map<int, int>> getAllWalletExpenseTotalsCents() async {
+    final db = await _db;
+    final results = await db.rawQuery(
+      '''
+      SELECT ${AppTables.colExpenseWalletId}, SUM(${AppTables.colExpenseAmountCents}) as total
+      FROM ${AppTables.expenses}
+      WHERE ${AppTables.colExpenseIsDeleted} = 0
+      GROUP BY ${AppTables.colExpenseWalletId}
+      ''',
+    );
+
+    final Map<int, int> totals = {};
+    for (final row in results) {
+      final walletId = row[AppTables.colExpenseWalletId] as int;
+      final total = (row['total'] as int?) ?? 0;
+      totals[walletId] = total;
+    }
+    return totals;
+  }
+
   Future<void> clearAllExpenses() async {
     final db = await _db;
     await db.delete(AppTables.expenses);

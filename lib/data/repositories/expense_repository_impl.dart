@@ -101,6 +101,12 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   @override
+  Future<Map<int, double>> getAllWalletExpenseTotals() async {
+    final centsMap = await localDatasource.getAllWalletExpenseTotalsCents();
+    return centsMap.map((key, value) => MapEntry(key, value / 100.0));
+  }
+
+  @override
   Future<void> clearAllData() async {
     await localDatasource.clearAllExpenses();
   }

@@ -42,13 +42,6 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
     Emitter<CategoryState> emit,
   ) async {
     try {
-      final hasExpenses = await categoryRepository.categoryHasExpenses(event.id);
-      if (hasExpenses) {
-        emit(const CategoryError("Cannot delete category with associated expenses"));
-        add(const LoadCategoriesEvent());
-        return;
-      }
-
       await categoryRepository.deleteCategory(event.id);
       add(const LoadCategoriesEvent());
     } catch (e) {

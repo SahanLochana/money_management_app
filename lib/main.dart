@@ -21,10 +21,15 @@ import 'package:money_management_app/presentation/blocs/expense/expense_event.da
 import 'package:money_management_app/presentation/blocs/reminder/reminder_bloc.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_bloc.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/main_shell.dart';
+import 'package:money_management_app/presentation/screens/splash_screen.dart';
+import 'package:money_management_app/presentation/screens/wallet_setup_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/services/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -47,9 +52,7 @@ void _handleNotificationPayload(String? payload) {
         ),
       );
     }
-  } catch (e) {
-    debugPrint('Error navigating from notification payload: $e');
-  }
+  } catch (_) {}
 }
 
 void main() async {
@@ -102,9 +105,10 @@ void main() async {
         );
       }
     }
-  } catch (e) {
-    debugPrint('Error re-syncing startup reminders: $e');
-  }
+  } catch (_) {}
+
+  final prefs = await SharedPreferences.getInstance();
+  final isSetupDone = prefs.getBool('wallet_setup_done') ?? false;
 
   runApp(
     MyApp(
@@ -112,6 +116,7 @@ void main() async {
       categoryRepository: categoryRepository,
       walletRepository: walletRepository,
       reminderRepository: reminderRepository,
+      isSetupDone: isSetupDone,
     ),
   );
 }
@@ -121,6 +126,8 @@ class MyApp extends StatelessWidget {
   final CategoryRepository categoryRepository;
   final WalletRepository walletRepository;
   final ReminderRepository reminderRepository;
+  final bool isSetupDone;
+  final bool showSplash;
 
   const MyApp({
     super.key,
@@ -128,6 +135,8 @@ class MyApp extends StatelessWidget {
     required this.categoryRepository,
     required this.walletRepository,
     required this.reminderRepository,
+    required this.isSetupDone,
+    this.showSplash = true,
   });
 
   @override
@@ -147,6 +156,12 @@ class MyApp extends StatelessWidget {
               categoryRepository: categoryRepository,
               walletRepository: walletRepository,
             )..add(const LoadExpenses()),
+          ),
+          BlocProvider<WalletBloc>(
+            create: (context) => WalletBloc(
+              walletRepository: walletRepository,
+              expenseRepository: expenseRepository,
+            )..add(const LoadWalletsEvent()),
           ),
           BlocProvider<StatsBloc>(
             create: (context) => StatsBloc(
@@ -192,7 +207,9 @@ class MyApp extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
-          home: const MainShell(),
+          home: showSplash
+              ? const SplashScreen()
+              : (isSetupDone ? const MainShell() : const WalletSetupPage()),
         ),
       ),
     );
