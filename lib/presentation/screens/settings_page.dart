@@ -8,6 +8,7 @@ import 'package:money_management_app/presentation/screens/manage_categories_page
 import 'package:money_management_app/presentation/screens/manage_reminders_page.dart';
 import 'package:money_management_app/presentation/screens/manage_wallets_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,21 +25,28 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _loadDailyBudget();
   }
 
-  Future<void> _loadSettings() async {
+  Future<void> _loadDailyBudget() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _dailyBudget = prefs.getDouble('daily_budget') ?? 500.0;
-    });
+    final savedBudget = prefs.getDouble('daily_budget') ?? 500.0;
+    if (mounted) {
+      setState(() => _dailyBudget = savedBudget);
+    }
   }
 
-  Future<void> _editDailyBudgetDialog() async {
-    final controller = TextEditingController(
-      text: _dailyBudget.toStringAsFixed(0),
-    );
-    final result = await showDialog<double>(
+  Future<void> _updateDailyBudget(double newBudget) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('daily_budget', newBudget);
+    if (mounted) {
+      setState(() => _dailyBudget = newBudget);
+    }
+  }
+
+  void _showEditDailyBudgetDialog() {
+    final controller = TextEditingController(text: _dailyBudget.toStringAsFixed(0));
+    showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
@@ -50,14 +58,18 @@ class _SettingsPageState extends State<SettingsPage> {
           "Edit Daily Budget",
           style: TextStyle(
             color: AppColors.textPrimary,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
         ),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
+          autofocus: true,
           style: const TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
+            hintText: "Enter amount",
+            hintStyle: const TextStyle(color: AppColors.textMuted),
             prefixText: "Rs ",
             prefixStyle: const TextStyle(
               color: AppColors.primary,
@@ -65,7 +77,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             filled: true,
             fillColor: AppColors.surfaceLight,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.surfaceBorder),
+            ),
           ),
         ),
         actions: [
@@ -79,7 +94,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ElevatedButton(
             onPressed: () {
               final val = double.tryParse(controller.text.trim());
-              Navigator.pop(context, val);
+              if (val != null && val > 0) {
+                _updateDailyBudget(val);
+                Navigator.pop(context);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -93,15 +111,9 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
-
-    if (result != null && result > 0) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble('daily_budget', result);
-      setState(() => _dailyBudget = result);
-    }
   }
 
-  Future<void> _clearAllDataDialog() async {
+  Future<void> _clearAllData() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -113,13 +125,17 @@ class _SettingsPageState extends State<SettingsPage> {
         title: const Text(
           "Clear All Data?",
           style: TextStyle(
-            color: AppColors.expense,
+            color: AppColors.textPrimary,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
         ),
         content: const Text(
-          "This will delete all your local expense records. This action cannot be undone.",
-          style: TextStyle(color: AppColors.textSecondary),
+          "This will permanently delete all your expenses. Categories and wallet preferences will remain. This action cannot be undone.",
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
         ),
         actions: [
           TextButton(
@@ -136,7 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
               foregroundColor: Colors.white,
             ),
             child: const Text(
-              "Clear All",
+              "Clear Data",
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -146,16 +162,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (confirmed == true && mounted) {
       context.read<ExpenseBloc>().add(const ClearAllExpensesEvent());
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("All expense data cleared"),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      AppSnackBar.show(context, message: "All expense data cleared");
     }
   }
 
@@ -295,7 +302,7 @@ class _SettingsPageState extends State<SettingsPage> {
             iconColor: AppColors.warning,
             title: "Daily Budget Target",
             subtitle: "Rs ${_dailyBudget.toStringAsFixed(0)} / day",
-            onTap: _editDailyBudgetDialog,
+            onTap: _showEditDailyBudgetDialog,
           ),
 
           const SizedBox(height: 20),
@@ -315,7 +322,7 @@ class _SettingsPageState extends State<SettingsPage> {
             iconColor: AppColors.expense,
             title: "Clear All Data",
             subtitle: "Reset all local expenses",
-            onTap: _clearAllDataDialog,
+            onTap: _clearAllData,
           ),
 
           const SizedBox(height: 40),

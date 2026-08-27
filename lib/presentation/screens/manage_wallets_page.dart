@@ -8,6 +8,7 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart'
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 
 class ManageWalletsPage extends StatefulWidget {
   const ManageWalletsPage({super.key});
@@ -183,16 +184,7 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
 
     if (result != null && mounted) {
       context.read<WalletBloc>().add(AddWalletFundsEvent(result));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Added Rs ${result.amount.toStringAsFixed(0)} to wallet"),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      AppSnackBar.show(context, message: "Added Rs ${result.amount.toStringAsFixed(0)} to wallet");
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_management_app/domain/models/category.dart';
+import 'package:money_management_app/domain/models/income_category.dart';
 import 'package:money_management_app/presentation/blocs/category/category_bloc.dart';
 import 'package:money_management_app/presentation/blocs/category/category_event.dart';
 import 'package:money_management_app/presentation/blocs/category/category_state.dart';
@@ -11,19 +12,43 @@ import 'package:money_management_app/presentation/blocs/reminder/reminder_event.
 import 'package:money_management_app/presentation/blocs/stats/stats_bloc.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_event.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+
+enum CategoryTab { expense, income }
 
 class ManageCategoriesPage extends StatefulWidget {
-  const ManageCategoriesPage({super.key});
+  final CategoryTab initialTab;
+
+  const ManageCategoriesPage({
+    super.key,
+    this.initialTab = CategoryTab.expense,
+  });
 
   @override
   State<ManageCategoriesPage> createState() => _ManageCategoriesPageState();
 }
 
 class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
+  late CategoryTab _currentTab;
+  List<IncomeCategory> _incomeCategories = [];
+  bool _isLoadingIncome = true;
+
   @override
   void initState() {
     super.initState();
+    _currentTab = widget.initialTab;
     context.read<CategoryBloc>().add(const LoadCategoriesEvent());
+    _loadIncomeCategories();
+  }
+
+  Future<void> _loadIncomeCategories() async {
+    final list = await IncomeCategory.loadAll();
+    if (mounted) {
+      setState(() {
+        _incomeCategories = list;
+        _isLoadingIncome = false;
+      });
+    }
   }
 
   Future<void> _addCategoryDialog() async {
@@ -31,24 +56,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     final amountCtrl = TextEditingController();
     String selectedEmoji = '🏷️';
     final emojis = [
-      '🍳',
-      '🍔',
-      '🌙',
-      '☕',
-      '🍕',
-      '🚗',
-      '🛍️',
-      '💊',
-      '🎮',
-      '📚',
-      '🏋️',
-      '✈️',
-      '🎬',
-      '💡',
-      '🏠',
-      '🤝',
-      '🍿',
-      '🏷️',
+      '🍳', '🍔', '🌙', '☕', '🍕', '🚗',
+      '🛍️', '💊', '🎮', '📚', '🏋️', '✈️',
+      '🎬', '💡', '🏠', '🤝', '🍿', '🏷️',
     ];
 
     final created = await showDialog<Category>(
@@ -61,7 +71,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             side: const BorderSide(color: AppColors.surfaceBorder),
           ),
           title: const Text(
-            "Add New Category",
+            "Add Expense Category",
             style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -108,6 +118,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: nameCtrl,
+                  autofocus: true,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: "e.g. Gym, Coffee, Groceries",
@@ -116,6 +127,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     fillColor: AppColors.surfaceLight,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.surfaceBorder),
                     ),
                   ),
                 ),
@@ -127,10 +139,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: amountCtrl,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: "0.00",
+                    hintText: "0",
                     hintStyle: const TextStyle(color: AppColors.textMuted),
                     prefixText: "Rs ",
                     prefixStyle: const TextStyle(
@@ -141,6 +153,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     fillColor: AppColors.surfaceLight,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.surfaceBorder),
                     ),
                   ),
                 ),
@@ -187,16 +200,145 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
     if (created != null && mounted) {
       context.read<CategoryBloc>().add(AddCategoryEvent(created));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Category '${created.name}' added"),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      AppSnackBar.show(context, message: "Expense Category '${created.name}' added");
+    }
+  }
+
+  Future<void> _addIncomeCategoryDialog() async {
+    final nameCtrl = TextEditingController();
+    final emojiCtrl = TextEditingController(text: '💰');
+
+    final created = await showDialog<IncomeCategory?>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Text(
+          "Add Income Category",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
           ),
         ),
-      );
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Category Name",
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: "e.g. Freelance, Part-time, Bonus",
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                filled: true,
+                fillColor: AppColors.surfaceLight,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.income, width: 1.5),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              "Emoji Icon",
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: emojiCtrl,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+              decoration: InputDecoration(
+                hintText: "💰",
+                filled: true,
+                fillColor: AppColors.surfaceLight,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.income, width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              final emoji = emojiCtrl.text.trim().isNotEmpty ? emojiCtrl.text.trim() : '💰';
+              if (name.isNotEmpty) {
+                final newCat = IncomeCategory(
+                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                  name: name,
+                  emoji: emoji,
+                );
+                Navigator.pop(dialogCtx, newCat);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.income,
+              foregroundColor: const Color(0xFF0F0F14),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Add",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (created != null) {
+      await IncomeCategory.saveCustom(created);
+      await _loadIncomeCategories();
+      if (mounted) {
+        AppSnackBar.show(context, message: "Added ${created.emoji} ${created.name} income category");
+      }
     }
   }
 
@@ -300,7 +442,6 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
     if (confirmed == true && mounted && cat.id != null) {
       context.read<CategoryBloc>().add(DeleteCategoryEvent(cat.id!));
-      // Refresh dependent blocs so UI updates seamlessly
       context.read<ExpenseBloc>().add(const LoadExpenses());
       context.read<ReminderBloc>().add(const LoadRemindersEvent());
       final now = DateTime.now();
@@ -308,16 +449,81 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             LoadMonthlyStatsEvent(year: now.year, month: now.month),
           );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Deleted '${cat.name}' (expenses reassigned to 'Other')"),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      AppSnackBar.show(context, message: "Deleted '${cat.name}' (expenses reassigned to 'Other')");
+    }
+  }
+
+  Future<void> _deleteIncomeCategoryDialog(IncomeCategory cat) async {
+    final isCustom = !IncomeCategory.defaultCategories.any((d) => d.id == cat.id);
+    if (!isCustom) {
+      AppSnackBar.show(context, message: "Default income categories cannot be deleted", isError: true);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.expense,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Delete '${cat.name}'?",
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to remove ${cat.emoji} ${cat.name} from income categories?",
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
           ),
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text(
+              "Delete",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await IncomeCategory.deleteCategory(cat.id);
+      await _loadIncomeCategories();
+      if (mounted) {
+        AppSnackBar.show(context, message: "Deleted '${cat.name}' income category");
+      }
     }
   }
 
@@ -351,18 +557,25 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: TextButton.icon(
-              onPressed: _addCategoryDialog,
-              icon: const Icon(Icons.add_rounded, color: AppColors.primary, size: 18),
-              label: const Text(
-                "Add",
+              onPressed: _currentTab == CategoryTab.expense
+                  ? _addCategoryDialog
+                  : _addIncomeCategoryDialog,
+              icon: Icon(
+                Icons.add_rounded,
+                color: _currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income,
+                size: 18,
+              ),
+              label: Text(
+                _currentTab == CategoryTab.expense ? "Add Expense" : "Add Income",
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: _currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income,
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
               ),
               style: TextButton.styleFrom(
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundColor: (_currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income)
+                    .withValues(alpha: 0.12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -375,168 +588,411 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       body: BlocConsumer<CategoryBloc, CategoryState>(
         listener: (context, state) {
           if (state is CategoryError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.expense,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            );
+            AppSnackBar.show(context, message: state.message, isError: true);
           }
         },
         builder: (context, state) {
-          if (state is CategoryLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
+          final expenseCategories = (state is CategoryLoaded) ? state.categories : <Category>[];
 
-          if (state is CategoryLoaded) {
-            return ListView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              children: [
-                // Info header card
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
+          return Column(
+            children: [
+              // Segmented Tab Selector
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.surfaceBorder.withValues(alpha: 0.6),
-                    ),
+                    border: Border.all(color: AppColors.surfaceBorder),
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.category_rounded,
-                          color: AppColors.primary,
-                          size: 20,
+                      _buildTabButton(
+                        label: "Expense Categories",
+                        count: expenseCategories.length,
+                        tab: CategoryTab.expense,
+                        activeColor: AppColors.expense,
+                      ),
+                      _buildTabButton(
+                        label: "Income Categories",
+                        count: _incomeCategories.length,
+                        tab: CategoryTab.income,
+                        activeColor: AppColors.income,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Tab Body
+              Expanded(
+                child: _currentTab == CategoryTab.expense
+                    ? _buildExpenseCategoriesList(state, expenseCategories)
+                    : _buildIncomeCategoriesList(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTabButton({
+    required String label,
+    required int count,
+    required CategoryTab tab,
+    required Color activeColor,
+  }) {
+    final isSelected = _currentTab == tab;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _currentTab = tab;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? activeColor.withValues(alpha: 0.16) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? activeColor.withValues(alpha: 0.5) : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? activeColor : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? activeColor.withValues(alpha: 0.25) : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "$count",
+                  style: TextStyle(
+                    color: isSelected ? activeColor : AppColors.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpenseCategoriesList(CategoryState state, List<Category> categories) {
+    if (state is CategoryLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      children: [
+        // Info Banner
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.expense.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.expense,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${categories.length} Expense Categories",
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      "Used to track daily meals, shopping, transport & other expenses.",
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        ...categories.map((cat) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    cat.emoji,
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cat.name,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "${state.categories.length} Categories",
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              "All categories can be removed or customized anytime.",
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                      if (cat.defaultAmount > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          "Default: Rs ${cat.defaultAmount.toStringAsFixed(0)}",
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ] else if (cat.isSystem) ...[
+                        const SizedBox(height: 2),
+                        const Text(
+                          "System preset",
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.expense,
+                    size: 20,
+                  ),
+                  tooltip: "Delete Category",
+                  onPressed: () => _deleteCategoryDialog(cat),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildIncomeCategoriesList() {
+    if (_isLoadingIncome) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.income));
+    }
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      children: [
+        // Info Banner
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.income.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: AppColors.income,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${_incomeCategories.length} Income Sources",
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      "Used when depositing allowances, bursaries, or extra funds into wallets.",
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        ..._incomeCategories.map((cat) {
+          final isDefault = IncomeCategory.defaultCategories.any((d) => d.id == cat.id);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    cat.emoji,
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cat.name,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isDefault ? "Default Income Source" : "Custom Income Source",
+                        style: TextStyle(
+                          color: isDefault ? AppColors.textMuted : AppColors.income,
+                          fontSize: 11,
+                          fontWeight: isDefault ? FontWeight.w500 : FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                ...state.categories.map((cat) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                if (!isDefault)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.expense,
+                      size: 20,
                     ),
+                    tooltip: "Delete Income Category",
+                    onPressed: () => _deleteIncomeCategoryDialog(cat),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "Preset",
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            cat.emoji,
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                cat.name,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              if (cat.defaultAmount > 0) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  "Default: Rs ${cat.defaultAmount.toStringAsFixed(0)}",
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ] else if (cat.isSystem) ...[
-                                const SizedBox(height: 2),
-                                const Text(
-                                  "System preset",
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline_rounded,
-                            color: AppColors.expense,
-                            size: 20,
-                          ),
-                          tooltip: "Delete Category",
-                          onPressed: () => _deleteCategoryDialog(cat),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                  ),
               ],
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
-      ),
+            ),
+          );
+        }),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }

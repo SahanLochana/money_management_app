@@ -10,6 +10,7 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart'
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:money_management_app/presentation/widgets/transaction_details_sheet.dart';
 import 'package:money_management_app/presentation/widgets/transactioncard.dart';
 import 'package:money_management_app/presentation/widgets/transfer_card.dart';
@@ -48,21 +49,14 @@ class _HistoryPageState extends State<HistoryPage> {
     final expId = exp.id!;
     context.read<ExpenseBloc>().add(DeleteExpenseEvent(expId));
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Deleted expense (${exp.formattedAmount}) • Restored to wallet"),
-        backgroundColor: AppColors.surfaceLight,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        action: SnackBarAction(
-          label: "Undo",
-          textColor: AppColors.primary,
-          onPressed: () {
-            context.read<ExpenseBloc>().add(RestoreExpenseEvent(expId));
-          },
-        ),
-      ),
+    AppSnackBar.show(
+      context,
+      message: "Deleted expense (${exp.formattedAmount}) • Restored to wallet",
+      actionLabel: "Undo",
+      durationSeconds: 3,
+      onAction: () {
+        context.read<ExpenseBloc>().add(RestoreExpenseEvent(expId));
+      },
     );
   }
 
@@ -72,22 +66,15 @@ class _HistoryPageState extends State<HistoryPage> {
     context.read<WalletBloc>().add(DeleteWalletTransferEvent(transferId));
     context.read<ExpenseBloc>().add(const LoadExpenses());
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Reverted transfer (${transfer.formattedAmount}) • Returned to ${fromWallet?.name ?? 'wallet'}"),
-        backgroundColor: AppColors.surfaceLight,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        action: SnackBarAction(
-          label: "Undo",
-          textColor: AppColors.primary,
-          onPressed: () {
-            context.read<WalletBloc>().add(RestoreWalletTransferEvent(transferId));
-            context.read<ExpenseBloc>().add(const LoadExpenses());
-          },
-        ),
-      ),
+    AppSnackBar.show(
+      context,
+      message: "Reverted transfer (${transfer.formattedAmount}) • Returned to ${fromWallet?.name ?? 'wallet'}",
+      actionLabel: "Undo",
+      durationSeconds: 3,
+      onAction: () {
+        context.read<WalletBloc>().add(RestoreWalletTransferEvent(transferId));
+        context.read<ExpenseBloc>().add(const LoadExpenses());
+      },
     );
   }
 

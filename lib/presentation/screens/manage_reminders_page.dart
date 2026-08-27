@@ -3,11 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:money_management_app/domain/models/category.dart';
 import 'package:money_management_app/domain/models/reminder_slot.dart';
 import 'package:money_management_app/presentation/blocs/category/category_bloc.dart';
+import 'package:money_management_app/presentation/blocs/category/category_event.dart';
 import 'package:money_management_app/presentation/blocs/category/category_state.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_bloc.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:money_management_app/presentation/widgets/reminder_card.dart';
 import 'package:money_management_app/services/notification_service.dart';
 
@@ -23,102 +25,64 @@ class _ManageRemindersPageState extends State<ManageRemindersPage> {
   void initState() {
     super.initState();
     context.read<ReminderBloc>().add(const LoadRemindersEvent());
+    context.read<CategoryBloc>().add(const LoadCategoriesEvent());
   }
 
   Future<bool> _ensureNotificationPermission() async {
-    final hasPerm = await NotificationService.instance.hasNotificationPermission();
-    if (hasPerm) return true;
-
-    final granted = await NotificationService.instance.requestPermissions();
+    final granted = await NotificationService.instance.hasNotificationPermission();
     if (granted) return true;
-
     if (!mounted) return false;
 
-    final permanentlyDenied =
-        await NotificationService.instance.isPermissionPermanentlyDenied();
-    if (!mounted) return false;
-
-    final reminderBloc = context.read<ReminderBloc>();
-
-    await showDialog(
+    final allowed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: AppColors.surfaceBorder),
         ),
-        title: const Row(
-          children: [
-            Icon(
-              Icons.notifications_off_outlined,
-              color: AppColors.warning,
-              size: 24,
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                "Notifications Disabled",
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
+        title: const Text(
+          "Notifications Disabled",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        content: Text(
-          permanentlyDenied
-              ? "Notification permission is required to receive daily reminders. Please allow notifications in App Settings to enable reminders."
-              : "Notification permission is required to send daily reminders. Reminders will stay turned off until permission is granted.",
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        content: const Text(
+          "To receive your daily spending reminders, please enable notifications.",
+          style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text("Not Now", style: TextStyle(color: AppColors.textSecondary)),
           ),
-          if (permanentlyDenied)
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                NotificationService.instance.openSettings();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Open Settings",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            )
-          else
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                final retryGranted =
-                    await NotificationService.instance.requestPermissions();
-                if (retryGranted) {
-                  reminderBloc.add(const LoadRemindersEvent());
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Allow",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogCtx, true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: const Color(0xFF0F0F14),
             ),
+            child: const Text("Allow", style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
         ],
       ),
     );
+
+    if (allowed == true) {
+      final reqGranted = await NotificationService.instance.requestPermissions();
+      if (reqGranted) {
+        if (mounted) context.read<ReminderBloc>().add(const LoadRemindersEvent());
+        return true;
+      } else {
+        final permDenied = await NotificationService.instance.isPermissionPermanentlyDenied();
+        if (permDenied) {
+          await NotificationService.instance.openSettings();
+        }
+      }
+    }
     return false;
   }
 
@@ -366,19 +330,11 @@ class _ManageRemindersPageState extends State<ManageRemindersPage> {
       final slotToAdd = allowed ? created : created.copyWith(isActive: false);
       if (mounted) {
         context.read<ReminderBloc>().add(AddReminderEvent(slotToAdd));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              allowed
-                  ? "Reminder added"
-                  : "Reminder added (toggled off until notifications are allowed)",
-            ),
-            backgroundColor: AppColors.surfaceLight,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        AppSnackBar.show(
+          context,
+          message: allowed
+              ? "Reminder added"
+              : "Reminder added (toggled off until notifications are allowed)",
         );
       }
     }
@@ -468,16 +424,7 @@ class _ManageRemindersPageState extends State<ManageRemindersPage> {
 
     if (confirmed == true && mounted && slot.id != null) {
       context.read<ReminderBloc>().add(DeleteReminderEvent(slot.id!));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Deleted '$title'"),
-          backgroundColor: AppColors.surfaceLight,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      AppSnackBar.show(context, message: "Deleted '$title'");
     }
   }
 
