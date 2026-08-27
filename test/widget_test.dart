@@ -121,9 +121,26 @@ void main() {
         walletRepository: FakeWalletRepository(),
         reminderRepository: FakeReminderRepository(),
         isSetupDone: true,
+        showSplash: false,
       ),
     );
 
     expect(find.text("Today's Spending"), findsOneWidget);
+  });
+
+  testWidgets('SplashScreen displays brand elements', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MyApp(
+        expenseRepository: FakeExpenseRepository(),
+        categoryRepository: FakeCategoryRepository(),
+        walletRepository: FakeWalletRepository(),
+        reminderRepository: FakeReminderRepository(),
+        isSetupDone: true,
+        showSplash: true,
+      ),
+    );
+
+    expect(find.text("VAULT"), findsOneWidget);
+    expect(find.text("SMART MONEY MANAGER"), findsOneWidget);
   });
 }

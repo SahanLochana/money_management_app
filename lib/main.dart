@@ -25,6 +25,7 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart'
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/main_shell.dart';
+import 'package:money_management_app/presentation/screens/splash_screen.dart';
 import 'package:money_management_app/presentation/screens/wallet_setup_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/services/notification_service.dart';
@@ -126,6 +127,7 @@ class MyApp extends StatelessWidget {
   final WalletRepository walletRepository;
   final ReminderRepository reminderRepository;
   final bool isSetupDone;
+  final bool showSplash;
 
   const MyApp({
     super.key,
@@ -134,6 +136,7 @@ class MyApp extends StatelessWidget {
     required this.walletRepository,
     required this.reminderRepository,
     required this.isSetupDone,
+    this.showSplash = true,
   });
 
   @override
@@ -204,7 +207,9 @@ class MyApp extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
-          home: isSetupDone ? const MainShell() : const WalletSetupPage(),
+          home: showSplash
+              ? const SplashScreen()
+              : (isSetupDone ? const MainShell() : const WalletSetupPage()),
         ),
       ),
     );
