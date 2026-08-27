@@ -37,4 +37,12 @@ class AppTables {
   static const String colReminderDefaultAmountCents = 'default_amount_cents';
   static const String colReminderIsActive = 'is_active'; // 0 or 1
   static const String colReminderIsSystem = 'is_system'; // 0 or 1
+
+  // Wallet Funds (Top-ups / Deposits) Table & Columns
+  static const String walletFunds = 'wallet_funds';
+  static const String colFundId = 'id';
+  static const String colFundWalletId = 'wallet_id';
+  static const String colFundAmountCents = 'amount_cents';
+  static const String colFundNote = 'note';
+  static const String colFundCreatedAt = 'created_at';
 }

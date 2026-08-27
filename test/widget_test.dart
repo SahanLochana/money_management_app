@@ -3,6 +3,7 @@ import 'package:money_management_app/domain/models/category.dart';
 import 'package:money_management_app/domain/models/expense.dart';
 import 'package:money_management_app/domain/models/reminder_slot.dart';
 import 'package:money_management_app/domain/models/wallet.dart';
+import 'package:money_management_app/domain/models/wallet_fund.dart';
 import 'package:money_management_app/domain/repositories/category_repository.dart';
 import 'package:money_management_app/domain/repositories/expense_repository.dart';
 import 'package:money_management_app/domain/repositories/reminder_repository.dart';
@@ -28,6 +29,8 @@ class FakeExpenseRepository implements ExpenseRepository {
   Future<double> getMonthlyTotal(int year, int month) async => 0.0;
   @override
   Future<Map<int, double>> getMonthlyWalletTotals(int year, int month) async => {};
+  @override
+  Future<Map<int, double>> getAllWalletExpenseTotals() async => {};
   @override
   Future<List<Expense>> getTodayExpenses() async => [];
   @override
@@ -69,6 +72,14 @@ class FakeWalletRepository implements WalletRepository {
       ];
   @override
   Future<Wallet?> getWalletById(int id) async => const Wallet(id: 1, name: 'In Hand', emoji: '👛');
+  @override
+  Future<int> addFunds(WalletFund fund) async => 1;
+  @override
+  Future<List<WalletFund>> getFundsForWallet(int walletId) async => [];
+  @override
+  Future<Map<int, double>> getAllWalletFundTotals() async => {};
+  @override
+  Future<void> deleteFund(int id) async {}
 }
 
 class FakeReminderRepository implements ReminderRepository {
@@ -92,6 +103,7 @@ void main() {
         categoryRepository: FakeCategoryRepository(),
         walletRepository: FakeWalletRepository(),
         reminderRepository: FakeReminderRepository(),
+        isSetupDone: true,
       ),
     );
 

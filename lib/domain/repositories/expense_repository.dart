@@ -13,6 +13,7 @@ abstract class ExpenseRepository {
   Future<double> getMonthlyTotal(int year, int month);
   Future<Map<int, double>> getMonthlyCategoryTotals(int year, int month);
   Future<Map<int, double>> getMonthlyWalletTotals(int year, int month);
+  Future<Map<int, double>> getAllWalletExpenseTotals();
   Future<void> clearAllData();
   Future<List<Map<String, dynamic>>> exportAllData();
 }

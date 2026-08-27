@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
+import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_bloc.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_event.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/screens/history_page.dart';
 import 'package:money_management_app/presentation/screens/homepage.dart';
@@ -36,12 +40,18 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+    return BlocListener<ExpenseBloc, ExpenseState>(
+      listener: (context, state) {
+        if (state is ExpenseLoaded) {
+          context.read<WalletBloc>().add(const LoadWalletsEvent());
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
       floatingActionButton: FloatingActionBtn(
         onPressed: _openAddTransaction,
       ),
@@ -130,6 +140,7 @@ class _MainShellState extends State<MainShell> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

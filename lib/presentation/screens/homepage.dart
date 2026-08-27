@@ -5,7 +5,11 @@ import 'package:money_management_app/domain/models/expense.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_state.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
+import 'package:money_management_app/presentation/screens/manage_wallets_page.dart';
 import 'package:money_management_app/presentation/screens/settings_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/widgets/herocard.dart';
@@ -228,6 +232,7 @@ class _HomepageState extends State<Homepage> {
             backgroundColor: AppColors.surface,
             onRefresh: () async {
               context.read<ExpenseBloc>().add(const LoadExpenses());
+              context.read<WalletBloc>().add(const LoadWalletsEvent());
             },
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(
@@ -241,6 +246,101 @@ class _HomepageState extends State<Homepage> {
                     child: TodaySpentCard(
                       dailySpent: todaySpent,
                       dailyBudget: _dailyBudget,
+                    ),
+                  ),
+                ),
+
+                // Live Wallet Balance Chips
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                    child: BlocBuilder<WalletBloc, WalletState>(
+                      builder: (context, walletState) {
+                        if (walletState is WalletLoaded) {
+                          return Row(
+                            children: walletState.wallets.map((wallet) {
+                              final balance = walletState.getBalance(wallet.id);
+                              final isNegative = balance < 0;
+
+                              return Expanded(
+                                child: Container(
+                                  margin: EdgeInsets.only(
+                                    right: wallet == walletState.wallets.last ? 0 : 10,
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const ManageWalletsPage(),
+                                          ),
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: isNegative
+                                                ? AppColors.expense.withValues(alpha: 0.4)
+                                                : AppColors.surfaceBorder.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              wallet.emoji,
+                                              style: const TextStyle(fontSize: 16),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    wallet.name,
+                                                    style: const TextStyle(
+                                                      color: AppColors.textSecondary,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 1),
+                                                  Text(
+                                                    "Rs ${balance.toStringAsFixed(0)}",
+                                                    style: TextStyle(
+                                                      color: isNegative
+                                                          ? AppColors.expense
+                                                          : AppColors.textPrimary,
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ),
                 ),

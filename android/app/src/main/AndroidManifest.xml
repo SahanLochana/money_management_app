@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
-        android:label="money_management_app"
+        android:label="Vault"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

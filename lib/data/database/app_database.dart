@@ -21,8 +21,9 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -79,8 +80,35 @@ class AppDatabase {
       )
     ''');
 
+    // 5. Wallet Funds table
+    await db.execute('''
+      CREATE TABLE ${AppTables.walletFunds} (
+        ${AppTables.colFundId} INTEGER PRIMARY KEY AUTOINCREMENT,
+        ${AppTables.colFundWalletId} INTEGER NOT NULL,
+        ${AppTables.colFundAmountCents} INTEGER NOT NULL,
+        ${AppTables.colFundNote} TEXT,
+        ${AppTables.colFundCreatedAt} TEXT NOT NULL,
+        FOREIGN KEY (${AppTables.colFundWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId})
+      )
+    ''');
+
     // Seed default initial data
     await _seedDefaultData(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${AppTables.walletFunds} (
+          ${AppTables.colFundId} INTEGER PRIMARY KEY AUTOINCREMENT,
+          ${AppTables.colFundWalletId} INTEGER NOT NULL,
+          ${AppTables.colFundAmountCents} INTEGER NOT NULL,
+          ${AppTables.colFundNote} TEXT,
+          ${AppTables.colFundCreatedAt} TEXT NOT NULL,
+          FOREIGN KEY (${AppTables.colFundWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId})
+        )
+      ''');
+    }
   }
 
   Future<void> _seedDefaultData(Database db) async {
