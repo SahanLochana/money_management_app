@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:money_management_app/domain/models/reminder_slot.dart';
+import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -45,14 +47,11 @@ class NotificationService {
           final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
           final matchingLocation = tz.timeZoneDatabase.locations.values
               .cast<tz.Location?>()
-              .firstWhere(
-                (loc) {
-                  if (loc == null) return false;
-                  final nowInLoc = tz.TZDateTime.now(loc);
-                  return nowInLoc.timeZoneOffset.inMinutes == offsetMinutes;
-                },
-                orElse: () => null,
-              );
+              .firstWhere((loc) {
+                if (loc == null) return false;
+                final nowInLoc = tz.TZDateTime.now(loc);
+                return nowInLoc.timeZoneOffset.inMinutes == offsetMinutes;
+              }, orElse: () => null);
           if (matchingLocation != null) {
             tz.setLocalLocation(matchingLocation);
           }
@@ -60,7 +59,9 @@ class NotificationService {
       }
     } catch (_) {}
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/launcher_icon',
+    );
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _notificationsPlugin.initialize(
@@ -76,7 +77,9 @@ class NotificationService {
     );
 
     final androidPlugin = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(
         const AndroidNotificationChannel(
@@ -90,7 +93,8 @@ class NotificationService {
       );
     }
 
-    final details = await _notificationsPlugin.getNotificationAppLaunchDetails();
+    final details = await _notificationsPlugin
+        .getNotificationAppLaunchDetails();
     if (details != null && details.didNotificationLaunchApp) {
       if (details.notificationResponse?.payload != null) {
         _pendingPayload = details.notificationResponse!.payload;
@@ -128,7 +132,9 @@ class NotificationService {
   Future<void> requestExactAlarmsPermission() async {
     try {
       final androidPlugin = _notificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (androidPlugin != null) {
         await androidPlugin.requestExactAlarmsPermission();
       }
@@ -142,7 +148,9 @@ class NotificationService {
   Future<bool> requestPermissions() async {
     try {
       final androidPlugin = _notificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
 
       if (androidPlugin != null) {
         await androidPlugin.requestNotificationsPermission();
@@ -189,16 +197,39 @@ class NotificationService {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
 
-      const androidDetails = AndroidNotificationDetails(
+      final String amountStr = slot.defaultAmount > 0
+          ? 'Rs ${slot.defaultAmount.toStringAsFixed(0)}'
+          : '';
+      final String notificationTitle = '$categoryName Reminder';
+      final String notificationBody = amountStr.isNotEmpty
+          ? 'Add expense: $amountStr?'
+          : 'Ready to track your expense?';
+
+      final bigTextStyleInformation = BigTextStyleInformation(
+        amountStr.isNotEmpty
+            ? '⚡ Time to log your expense!\nSuggested amount: $amountStr\nTap to record in 1 tap.'
+            : 'Keep your budget on track by logging your expense.',
+        contentTitle: notificationTitle,
+        summaryText: 'Daily Reminder',
+      );
+
+      final androidDetails = AndroidNotificationDetails(
         'meal_reminders_channel',
         'Meal Reminders',
         channelDescription: 'Daily expense reminders for meal times',
         importance: Importance.high,
         priority: Priority.high,
-        icon: '@mipmap/ic_launcher',
+        icon: '@mipmap/launcher_icon',
+        color: AppColors.primary,
+        category: AndroidNotificationCategory.reminder,
+        subText: 'Daily Reminder',
+        ticker: 'Time to track your expense!',
+        styleInformation: bigTextStyleInformation,
+        vibrationPattern: Int64List.fromList([0, 50, 0, 50]),
       );
-      const notificationDetails = NotificationDetails(android: androidDetails);
-      final payload = '${slot.categoryId}|${slot.defaultAmountCents}|${slot.id}';
+      final notificationDetails = NotificationDetails(android: androidDetails);
+      final payload =
+          '${slot.categoryId}|${slot.defaultAmountCents}|${slot.id}';
 
       bool scheduled = false;
 
@@ -206,8 +237,8 @@ class NotificationService {
         try {
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
-            categoryName,
-            'Add expense: Rs ${slot.defaultAmount.toStringAsFixed(0)}?',
+            notificationTitle,
+            notificationBody,
             scheduledDate,
             notificationDetails,
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -224,8 +255,8 @@ class NotificationService {
         try {
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
-            categoryName,
-            'Add expense: Rs ${slot.defaultAmount.toStringAsFixed(0)}?',
+            notificationTitle,
+            notificationBody,
             scheduledDate,
             notificationDetails,
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
