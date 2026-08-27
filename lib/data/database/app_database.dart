@@ -21,7 +21,7 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -92,6 +92,23 @@ class AppDatabase {
       )
     ''');
 
+    // 6. Wallet Transfers table
+    await db.execute('''
+      CREATE TABLE ${AppTables.walletTransfers} (
+        ${AppTables.colTransferId} INTEGER PRIMARY KEY AUTOINCREMENT,
+        ${AppTables.colTransferFromWalletId} INTEGER NOT NULL,
+        ${AppTables.colTransferToWalletId} INTEGER NOT NULL,
+        ${AppTables.colTransferAmountCents} INTEGER NOT NULL,
+        ${AppTables.colTransferDate} TEXT NOT NULL,
+        ${AppTables.colTransferTime} TEXT NOT NULL,
+        ${AppTables.colTransferNote} TEXT,
+        ${AppTables.colTransferIsDeleted} INTEGER NOT NULL DEFAULT 0,
+        ${AppTables.colTransferCreatedAt} TEXT NOT NULL,
+        FOREIGN KEY (${AppTables.colTransferFromWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId}),
+        FOREIGN KEY (${AppTables.colTransferToWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId})
+      )
+    ''');
+
     // Seed default initial data
     await _seedDefaultData(db);
   }
@@ -106,6 +123,23 @@ class AppDatabase {
           ${AppTables.colFundNote} TEXT,
           ${AppTables.colFundCreatedAt} TEXT NOT NULL,
           FOREIGN KEY (${AppTables.colFundWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId})
+        )
+      ''');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${AppTables.walletTransfers} (
+          ${AppTables.colTransferId} INTEGER PRIMARY KEY AUTOINCREMENT,
+          ${AppTables.colTransferFromWalletId} INTEGER NOT NULL,
+          ${AppTables.colTransferToWalletId} INTEGER NOT NULL,
+          ${AppTables.colTransferAmountCents} INTEGER NOT NULL,
+          ${AppTables.colTransferDate} TEXT NOT NULL,
+          ${AppTables.colTransferTime} TEXT NOT NULL,
+          ${AppTables.colTransferNote} TEXT,
+          ${AppTables.colTransferIsDeleted} INTEGER NOT NULL DEFAULT 0,
+          ${AppTables.colTransferCreatedAt} TEXT NOT NULL,
+          FOREIGN KEY (${AppTables.colTransferFromWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId}),
+          FOREIGN KEY (${AppTables.colTransferToWalletId}) REFERENCES ${AppTables.wallets} (${AppTables.colWalletId})
         )
       ''');
     }

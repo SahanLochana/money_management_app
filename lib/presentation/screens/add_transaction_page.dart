@@ -4,9 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:money_management_app/domain/models/category.dart';
 import 'package:money_management_app/domain/models/expense.dart';
 import 'package:money_management_app/domain/models/wallet.dart';
+import 'package:money_management_app/domain/models/wallet_transfer.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
+import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -224,6 +227,61 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final timeStr =
         '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
     final note = _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null;
+
+    if (_mode == TransactionMode.transfer) {
+      final from = _fromWallet ?? wallets.firstOrNull;
+      final to = _toWallet ?? (wallets.length > 1 ? wallets[1] : wallets.firstOrNull);
+
+      if (from == null || to == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Please select source and destination wallets"),
+            backgroundColor: AppColors.expense,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+
+      if (from.id == to.id) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Cannot transfer to the same wallet"),
+            backgroundColor: AppColors.expense,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+
+      final transfer = WalletTransfer(
+        fromWalletId: from.id,
+        toWalletId: to.id,
+        amountCents: amountCents,
+        transferDate: dateStr,
+        transferTime: timeStr,
+        note: note,
+        createdAt: DateTime.now().toIso8601String(),
+      );
+
+      context.read<WalletBloc>().add(AddWalletTransferEvent(transfer));
+      context.read<ExpenseBloc>().add(const LoadExpenses());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Transferred Rs ${parsedAmount.toStringAsFixed(0)} from ${from.name} to ${to.name}"),
+            backgroundColor: AppColors.surfaceLight,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        Navigator.pop(context);
+      }
+      return;
+    }
 
     if (isEditMode) {
       final updated = widget.expenseToEdit!.copyWith(

@@ -29,6 +29,8 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
       final todayExpenses = await expenseRepository.getTodayExpenses();
       final todayTotal = await expenseRepository.getTodayTotal();
       final grouped = await expenseRepository.getExpensesGroupedByDate();
+      final todayTransfers = await walletRepository.getTodayTransfers();
+      final groupedTransfers = await walletRepository.getTransfersGroupedByDate();
       final categories = await categoryRepository.getAllCategories();
       final wallets = await walletRepository.getAllWallets();
 
@@ -36,6 +38,8 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
         todayExpenses: todayExpenses,
         todayTotal: todayTotal,
         groupedExpenses: grouped,
+        todayTransfers: todayTransfers,
+        groupedTransfers: groupedTransfers,
         categories: categories,
         wallets: wallets,
       ));

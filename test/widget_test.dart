@@ -4,6 +4,7 @@ import 'package:money_management_app/domain/models/expense.dart';
 import 'package:money_management_app/domain/models/reminder_slot.dart';
 import 'package:money_management_app/domain/models/wallet.dart';
 import 'package:money_management_app/domain/models/wallet_fund.dart';
+import 'package:money_management_app/domain/models/wallet_transfer.dart';
 import 'package:money_management_app/domain/repositories/category_repository.dart';
 import 'package:money_management_app/domain/repositories/expense_repository.dart';
 import 'package:money_management_app/domain/repositories/reminder_repository.dart';
@@ -80,6 +81,22 @@ class FakeWalletRepository implements WalletRepository {
   Future<Map<int, double>> getAllWalletFundTotals() async => {};
   @override
   Future<void> deleteFund(int id) async {}
+  @override
+  Future<int> addTransfer(WalletTransfer transfer) async => 1;
+  @override
+  Future<void> softDeleteTransfer(int id) async {}
+  @override
+  Future<void> restoreTransfer(int id) async {}
+  @override
+  Future<List<WalletTransfer>> getTodayTransfers() async => [];
+  @override
+  Future<List<WalletTransfer>> getAllActiveTransfers() async => [];
+  @override
+  Future<Map<String, List<WalletTransfer>>> getTransfersGroupedByDate() async => {};
+  @override
+  Future<Map<int, double>> getTransferInTotals() async => {};
+  @override
+  Future<Map<int, double>> getTransferOutTotals() async => {};
 }
 
 class FakeReminderRepository implements ReminderRepository {

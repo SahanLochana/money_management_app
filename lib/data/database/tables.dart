@@ -45,4 +45,16 @@ class AppTables {
   static const String colFundAmountCents = 'amount_cents';
   static const String colFundNote = 'note';
   static const String colFundCreatedAt = 'created_at';
+
+  // Wallet Transfers Table & Columns
+  static const String walletTransfers = 'wallet_transfers';
+  static const String colTransferId = 'id';
+  static const String colTransferFromWalletId = 'from_wallet_id';
+  static const String colTransferToWalletId = 'to_wallet_id';
+  static const String colTransferAmountCents = 'amount_cents';
+  static const String colTransferDate = 'transfer_date'; // YYYY-MM-DD
+  static const String colTransferTime = 'transfer_time'; // HH:mm
+  static const String colTransferNote = 'note';
+  static const String colTransferIsDeleted = 'is_deleted'; // 0 or 1
+  static const String colTransferCreatedAt = 'created_at';
 }

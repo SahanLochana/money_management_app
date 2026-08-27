@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:money_management_app/domain/models/expense.dart';
+import 'package:money_management_app/domain/models/wallet.dart';
+import 'package:money_management_app/domain/models/wallet_transfer.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
@@ -16,7 +18,27 @@ import 'package:money_management_app/presentation/widgets/herocard.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
 import 'package:money_management_app/presentation/widgets/transaction_details_sheet.dart';
 import 'package:money_management_app/presentation/widgets/transactioncard.dart';
+import 'package:money_management_app/presentation/widgets/transfer_card.dart';
+import 'package:money_management_app/presentation/widgets/transfer_details_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+sealed class TodayActivityItem {
+  String get time;
+}
+
+class TodayExpenseItem extends TodayActivityItem {
+  final Expense expense;
+  TodayExpenseItem(this.expense);
+  @override
+  String get time => expense.expenseTime;
+}
+
+class TodayTransferItem extends TodayActivityItem {
+  final WalletTransfer transfer;
+  TodayTransferItem(this.transfer);
+  @override
+  String get time => transfer.transferTime;
+}
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -61,7 +83,7 @@ class _HomepageState extends State<Homepage> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Deleted expense (${exp.formattedAmount})"),
+        content: Text("Deleted expense (${exp.formattedAmount}) • Restored to wallet"),
         backgroundColor: AppColors.surfaceLight,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -76,7 +98,32 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
-  Future<bool> _confirmDeleteDialog(Expense exp) async {
+  void _deleteTransfer(WalletTransfer transfer, Wallet? fromWallet) {
+    if (transfer.id == null) return;
+    final transferId = transfer.id!;
+    context.read<WalletBloc>().add(DeleteWalletTransferEvent(transferId));
+    context.read<ExpenseBloc>().add(const LoadExpenses());
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Reverted transfer (${transfer.formattedAmount}) • Returned to ${fromWallet?.name ?? 'wallet'}"),
+        backgroundColor: AppColors.surfaceLight,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(
+          label: "Undo",
+          textColor: AppColors.primary,
+          onPressed: () {
+            context.read<WalletBloc>().add(RestoreWalletTransferEvent(transferId));
+            context.read<ExpenseBloc>().add(const LoadExpenses());
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteExpenseDialog(Expense exp) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -94,7 +141,7 @@ class _HomepageState extends State<Homepage> {
           ),
         ),
         content: Text(
-          "Are you sure you want to delete this expense (${exp.formattedAmount})?",
+          "Are you sure you want to delete this expense (${exp.formattedAmount})? This will restore ${exp.formattedAmount} back to your wallet balance.",
           style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 14,
@@ -120,6 +167,62 @@ class _HomepageState extends State<Homepage> {
             ),
             child: const Text(
               "Delete",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<bool> _confirmDeleteTransferDialog(WalletTransfer transfer, Wallet? fromWallet, Wallet? toWallet) async {
+    final fromName = fromWallet?.name ?? "source wallet";
+    final toName = toWallet?.name ?? "destination wallet";
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Text(
+          "Revert Transfer?",
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to revert this transfer (${transfer.formattedAmount})? This will return ${transfer.formattedAmount} to $fromName and deduct it from $toName.",
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.expense,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Revert",
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -218,14 +321,21 @@ class _HomepageState extends State<Homepage> {
               ),
             );
           }
-
           List<Expense> todayExpenses = [];
+          List<WalletTransfer> todayTransfers = [];
           double todaySpent = 0.0;
 
           if (state is ExpenseLoaded) {
             todayExpenses = state.todayExpenses;
+            todayTransfers = state.todayTransfers;
             todaySpent = state.todayTotal;
           }
+
+          final List<TodayActivityItem> activityItems = [
+            ...todayExpenses.map((e) => TodayExpenseItem(e)),
+            ...todayTransfers.map((t) => TodayTransferItem(t)),
+          ];
+          activityItems.sort((a, b) => b.time.compareTo(a.time));
 
           return RefreshIndicator(
             color: AppColors.primary,
@@ -239,7 +349,7 @@ class _HomepageState extends State<Homepage> {
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-                // Hero Card: Today's Spend + Daily Budget Remaining
+                // Hero Card: Today's Spend + Daily Budget Remaining (Transfers excluded)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -350,13 +460,13 @@ class _HomepageState extends State<Homepage> {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(20, 16, 20, 6),
                     child: SectionHeader(
-                      title: "Today's Expenses",
+                      title: "Today's Transactions",
                     ),
                   ),
                 ),
 
-                // Today's Expense List or Empty State
-                if (todayExpenses.isEmpty)
+                // Today's Activity List or Empty State
+                if (activityItems.isEmpty)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 48),
@@ -379,7 +489,7 @@ class _HomepageState extends State<Homepage> {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              "No expenses today",
+                              "No transactions today",
                               style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 15,
@@ -388,7 +498,7 @@ class _HomepageState extends State<Homepage> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              "Tap the + button to add your first expense",
+                              "Tap the + button to add an expense or transfer",
                               style: TextStyle(
                                 color: AppColors.textMuted,
                                 fontSize: 12,
@@ -405,70 +515,142 @@ class _HomepageState extends State<Homepage> {
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final item = todayExpenses[index];
-                          final category = state is ExpenseLoaded
-                              ? state.getCategory(item.categoryId)
-                              : null;
-                          final wallet = state is ExpenseLoaded
-                              ? state.getWallet(item.walletId)
-                              : null;
+                          final item = activityItems[index];
 
-                          return Dismissible(
-                            key: Key(item.id.toString()),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.only(right: 20),
-                              alignment: Alignment.centerRight,
-                              decoration: BoxDecoration(
-                                color: AppColors.expense.withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    "Delete",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                          if (item is TodayExpenseItem) {
+                            final exp = item.expense;
+                            final category = state is ExpenseLoaded
+                                ? state.getCategory(exp.categoryId)
+                                : null;
+                            final wallet = state is ExpenseLoaded
+                                ? state.getWallet(exp.walletId)
+                                : null;
+
+                            return Dismissible(
+                              key: Key('expense_${exp.id}'),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(right: 20),
+                                alignment: Alignment.centerRight,
+                                decoration: BoxDecoration(
+                                  color: AppColors.expense.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      "Delete",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                ],
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            confirmDismiss: (direction) => _confirmDeleteDialog(item),
-                            onDismissed: (direction) => _deleteExpense(item),
-                            child: TransactionCard(
-                              expense: item,
-                              category: category,
-                              wallet: wallet,
-                              onTap: () {
-                                TransactionDetailsSheet.show(
-                                  context,
-                                  expense: item,
-                                  category: category,
-                                  wallet: wallet,
-                                  onDelete: () async {
-                                    final confirmed = await _confirmDeleteDialog(item);
-                                    if (confirmed) {
-                                      _deleteExpense(item);
-                                    }
-                                  },
-                                  onEdit: () => _editExpense(item),
-                                );
-                              },
-                            ),
-                          );
+                              confirmDismiss: (direction) => _confirmDeleteExpenseDialog(exp),
+                              onDismissed: (direction) => _deleteExpense(exp),
+                              child: TransactionCard(
+                                expense: exp,
+                                category: category,
+                                wallet: wallet,
+                                onTap: () {
+                                  TransactionDetailsSheet.show(
+                                    context,
+                                    expense: exp,
+                                    category: category,
+                                    wallet: wallet,
+                                    onDelete: () async {
+                                      final confirmed = await _confirmDeleteExpenseDialog(exp);
+                                      if (confirmed) {
+                                        _deleteExpense(exp);
+                                      }
+                                    },
+                                    onEdit: () => _editExpense(exp),
+                                  );
+                                },
+                              ),
+                            );
+                          } else if (item is TodayTransferItem) {
+                            final transfer = item.transfer;
+                            final fromWallet = state is ExpenseLoaded
+                                ? state.getWallet(transfer.fromWalletId)
+                                : null;
+                            final toWallet = state is ExpenseLoaded
+                                ? state.getWallet(transfer.toWalletId)
+                                : null;
+
+                            return Dismissible(
+                              key: Key('transfer_${transfer.id}'),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(right: 20),
+                                alignment: Alignment.centerRight,
+                                decoration: BoxDecoration(
+                                  color: AppColors.expense.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      "Revert",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              confirmDismiss: (direction) =>
+                                  _confirmDeleteTransferDialog(transfer, fromWallet, toWallet),
+                              onDismissed: (direction) => _deleteTransfer(transfer, fromWallet),
+                              child: TransferCard(
+                                transfer: transfer,
+                                fromWallet: fromWallet,
+                                toWallet: toWallet,
+                                onTap: () {
+                                  TransferDetailsSheet.show(
+                                    context,
+                                    transfer: transfer,
+                                    fromWallet: fromWallet,
+                                    toWallet: toWallet,
+                                    onDelete: () async {
+                                      final confirmed = await _confirmDeleteTransferDialog(
+                                        transfer,
+                                        fromWallet,
+                                        toWallet,
+                                      );
+                                      if (confirmed) {
+                                        _deleteTransfer(transfer, fromWallet);
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
                         },
-                        childCount: todayExpenses.length,
+                        childCount: activityItems.length,
                       ),
                     ),
                   ),

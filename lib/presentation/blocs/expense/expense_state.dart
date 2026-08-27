@@ -1,6 +1,7 @@
 import 'package:money_management_app/domain/models/category.dart';
 import 'package:money_management_app/domain/models/expense.dart';
 import 'package:money_management_app/domain/models/wallet.dart';
+import 'package:money_management_app/domain/models/wallet_transfer.dart';
 
 abstract class ExpenseState {
   const ExpenseState();
@@ -18,6 +19,8 @@ class ExpenseLoaded extends ExpenseState {
   final List<Expense> todayExpenses;
   final double todayTotal;
   final Map<String, List<Expense>> groupedExpenses;
+  final List<WalletTransfer> todayTransfers;
+  final Map<String, List<WalletTransfer>> groupedTransfers;
   final List<Category> categories;
   final List<Wallet> wallets;
 
@@ -25,6 +28,8 @@ class ExpenseLoaded extends ExpenseState {
     required this.todayExpenses,
     required this.todayTotal,
     required this.groupedExpenses,
+    this.todayTransfers = const [],
+    this.groupedTransfers = const {},
     required this.categories,
     required this.wallets,
   });
