@@ -18,6 +18,25 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     on<UpdateReminderEvent>(_onUpdateReminder);
     on<DeleteReminderEvent>(_onDeleteReminder);
     on<ToggleReminderEvent>(_onToggleReminder);
+    on<RescheduleAllRemindersEvent>(_onRescheduleAllReminders);
+  }
+
+  Future<void> _onRescheduleAllReminders(
+    RescheduleAllRemindersEvent event,
+    Emitter<ReminderState> emit,
+  ) async {
+    try {
+      final reminders = await reminderRepository.getAllReminders();
+      final categories = await categoryRepository.getAllCategories();
+      final catMap = {
+        for (final c in categories)
+          if (c.id != null) c.id!: c.name,
+      };
+      await NotificationService.instance.rescheduleAllReminders(reminders, catMap);
+      emit(ReminderLoaded(reminders: reminders, categories: categories));
+    } catch (e) {
+      emit(ReminderError(e.toString()));
+    }
   }
 
   Future<void> _onLoadReminders(

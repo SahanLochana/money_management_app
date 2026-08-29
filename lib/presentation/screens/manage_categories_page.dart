@@ -56,9 +56,24 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     final amountCtrl = TextEditingController();
     String selectedEmoji = '🏷️';
     final emojis = [
-      '🍳', '🍔', '🌙', '☕', '🍕', '🚗',
-      '🛍️', '💊', '🎮', '📚', '🏋️', '✈️',
-      '🎬', '💡', '🏠', '🤝', '🍿', '🏷️',
+      '🍳',
+      '🍔',
+      '🌙',
+      '☕',
+      '🍕',
+      '🚗',
+      '🛍️',
+      '💊',
+      '🎮',
+      '📚',
+      '🏋️',
+      '✈️',
+      '🎬',
+      '💡',
+      '🏠',
+      '🤝',
+      '🍿',
+      '🏷️',
     ];
 
     final created = await showDialog<Category>(
@@ -84,7 +99,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               children: [
                 const Text(
                   "Choose Emoji",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -113,7 +131,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 const SizedBox(height: 16),
                 const Text(
                   "Category Name",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
@@ -127,19 +148,26 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     fillColor: AppColors.surfaceLight,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                      borderSide: const BorderSide(
+                        color: AppColors.surfaceBorder,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   "Default Amount (Optional)",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: "0",
@@ -153,7 +181,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     fillColor: AppColors.surfaceLight,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.surfaceBorder),
+                      borderSide: const BorderSide(
+                        color: AppColors.surfaceBorder,
+                      ),
                     ),
                   ),
                 ),
@@ -200,7 +230,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
     if (created != null && mounted) {
       context.read<CategoryBloc>().add(AddCategoryEvent(created));
-      AppSnackBar.show(context, message: "Expense Category '${created.name}' added");
+      AppSnackBar.show(
+        context,
+        message: "Expense Category '${created.name}' added",
+      );
     }
   }
 
@@ -240,13 +273,22 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             TextField(
               controller: nameCtrl,
               autofocus: true,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
               decoration: InputDecoration(
                 hintText: "e.g. Freelance, Part-time, Bonus",
-                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                hintStyle: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
                 filled: true,
                 fillColor: AppColors.surfaceLight,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: AppColors.surfaceBorder),
@@ -257,7 +299,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.income, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.income,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -273,12 +318,18 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             const SizedBox(height: 6),
             TextField(
               controller: emojiCtrl,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+              ),
               decoration: InputDecoration(
                 hintText: "💰",
                 filled: true,
                 fillColor: AppColors.surfaceLight,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: AppColors.surfaceBorder),
@@ -289,7 +340,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.income, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.income,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -300,13 +354,18 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             onPressed: () => Navigator.pop(dialogCtx),
             child: const Text(
               "Cancel",
-              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ElevatedButton(
             onPressed: () {
               final name = nameCtrl.text.trim();
-              final emoji = emojiCtrl.text.trim().isNotEmpty ? emojiCtrl.text.trim() : '💰';
+              final emoji = emojiCtrl.text.trim().isNotEmpty
+                  ? emojiCtrl.text.trim()
+                  : '💰';
               if (name.isNotEmpty) {
                 final newCat = IncomeCategory(
                   id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
@@ -337,7 +396,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       await IncomeCategory.saveCustom(created);
       await _loadIncomeCategories();
       if (mounted) {
-        AppSnackBar.show(context, message: "Added ${created.emoji} ${created.name} income category");
+        AppSnackBar.show(
+          context,
+          message: "Added ${created.emoji} ${created.name} income category",
+        );
       }
     }
   }
@@ -446,17 +508,26 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       context.read<ReminderBloc>().add(const LoadRemindersEvent());
       final now = DateTime.now();
       context.read<StatsBloc>().add(
-            LoadMonthlyStatsEvent(year: now.year, month: now.month),
-          );
+        LoadMonthlyStatsEvent(year: now.year, month: now.month),
+      );
 
-      AppSnackBar.show(context, message: "Deleted '${cat.name}' (expenses reassigned to 'Other')");
+      AppSnackBar.show(
+        context,
+        message: "Deleted '${cat.name}' (expenses reassigned to 'Other')",
+      );
     }
   }
 
   Future<void> _deleteIncomeCategoryDialog(IncomeCategory cat) async {
-    final isCustom = !IncomeCategory.defaultCategories.any((d) => d.id == cat.id);
+    final isCustom = !IncomeCategory.defaultCategories.any(
+      (d) => d.id == cat.id,
+    );
     if (!isCustom) {
-      AppSnackBar.show(context, message: "Default income categories cannot be deleted", isError: true);
+      AppSnackBar.show(
+        context,
+        message: "Default income categories cannot be deleted",
+        isError: true,
+      );
       return;
     }
 
@@ -490,10 +561,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         ),
         content: Text(
           "Are you sure you want to remove ${cat.emoji} ${cat.name} from income categories?",
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
@@ -522,7 +590,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       await IncomeCategory.deleteCategory(cat.id);
       await _loadIncomeCategories();
       if (mounted) {
-        AppSnackBar.show(context, message: "Deleted '${cat.name}' income category");
+        AppSnackBar.show(
+          context,
+          message: "Deleted '${cat.name}' income category",
+        );
       }
     }
   }
@@ -562,24 +633,36 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                   : _addIncomeCategoryDialog,
               icon: Icon(
                 Icons.add_rounded,
-                color: _currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income,
+                color: _currentTab == CategoryTab.expense
+                    ? AppColors.primary
+                    : AppColors.income,
                 size: 18,
               ),
               label: Text(
-                _currentTab == CategoryTab.expense ? "Add Expense" : "Add Income",
+                _currentTab == CategoryTab.expense
+                    ? "Add Expense"
+                    : "Add Income",
                 style: TextStyle(
-                  color: _currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income,
+                  color: _currentTab == CategoryTab.expense
+                      ? AppColors.primary
+                      : AppColors.income,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
               ),
               style: TextButton.styleFrom(
-                backgroundColor: (_currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income)
-                    .withValues(alpha: 0.12),
+                backgroundColor:
+                    (_currentTab == CategoryTab.expense
+                            ? AppColors.primary
+                            : AppColors.income)
+                        .withValues(alpha: 0.12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
               ),
             ),
           ),
@@ -592,13 +675,18 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           }
         },
         builder: (context, state) {
-          final expenseCategories = (state is CategoryLoaded) ? state.categories : <Category>[];
+          final expenseCategories = (state is CategoryLoaded)
+              ? state.categories
+              : <Category>[];
 
           return Column(
             children: [
               // Segmented Tab Selector
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -609,13 +697,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                   child: Row(
                     children: [
                       _buildTabButton(
-                        label: "Expense Categories",
+                        label: "Expense",
                         count: expenseCategories.length,
                         tab: CategoryTab.expense,
                         activeColor: AppColors.expense,
                       ),
                       _buildTabButton(
-                        label: "Income Categories",
+                        label: "Income",
                         count: _incomeCategories.length,
                         tab: CategoryTab.income,
                         activeColor: AppColors.income,
@@ -656,10 +744,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? activeColor.withValues(alpha: 0.16) : Colors.transparent,
+            color: isSelected
+                ? activeColor.withValues(alpha: 0.16)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? activeColor.withValues(alpha: 0.5) : Colors.transparent,
+              color: isSelected
+                  ? activeColor.withValues(alpha: 0.5)
+                  : Colors.transparent,
               width: 1.5,
             ),
           ),
@@ -679,7 +771,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isSelected ? activeColor.withValues(alpha: 0.25) : AppColors.surfaceLight,
+                  color: isSelected
+                      ? activeColor.withValues(alpha: 0.25)
+                      : AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -698,9 +792,14 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     );
   }
 
-  Widget _buildExpenseCategoriesList(CategoryState state, List<Category> categories) {
+  Widget _buildExpenseCategoriesList(
+    CategoryState state,
+    List<Category> categories,
+  ) {
     if (state is CategoryLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
 
     return ListView(
@@ -763,10 +862,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         ...categories.map((cat) {
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
@@ -784,10 +880,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     color: AppColors.surfaceLight,
                     shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    cat.emoji,
-                    style: const TextStyle(fontSize: 22),
-                  ),
+                  child: Text(cat.emoji, style: const TextStyle(fontSize: 22)),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -845,7 +938,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Widget _buildIncomeCategoriesList() {
     if (_isLoadingIncome) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.income));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.income),
+      );
     }
 
     return ListView(
@@ -906,14 +1001,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         ),
 
         ..._incomeCategories.map((cat) {
-          final isDefault = IncomeCategory.defaultCategories.any((d) => d.id == cat.id);
+          final isDefault = IncomeCategory.defaultCategories.any(
+            (d) => d.id == cat.id,
+          );
 
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
@@ -931,10 +1025,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     color: AppColors.surfaceLight,
                     shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    cat.emoji,
-                    style: const TextStyle(fontSize: 22),
-                  ),
+                  child: Text(cat.emoji, style: const TextStyle(fontSize: 22)),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -951,11 +1042,17 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isDefault ? "Default Income Source" : "Custom Income Source",
+                        isDefault
+                            ? "Default Income Source"
+                            : "Custom Income Source",
                         style: TextStyle(
-                          color: isDefault ? AppColors.textMuted : AppColors.income,
+                          color: isDefault
+                              ? AppColors.textMuted
+                              : AppColors.income,
                           fontSize: 11,
-                          fontWeight: isDefault ? FontWeight.w500 : FontWeight.w600,
+                          fontWeight: isDefault
+                              ? FontWeight.w500
+                              : FontWeight.w600,
                         ),
                       ),
                     ],
@@ -973,7 +1070,10 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(8),

@@ -20,17 +20,122 @@ class ManageRemindersPage extends StatefulWidget {
   State<ManageRemindersPage> createState() => _ManageRemindersPageState();
 }
 
-class _ManageRemindersPageState extends State<ManageRemindersPage> {
+class _ManageRemindersPageState extends State<ManageRemindersPage>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     context.read<ReminderBloc>().add(const LoadRemindersEvent());
     context.read<CategoryBloc>().add(const LoadCategoriesEvent());
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _onAppResumed();
+    }
+  }
+
+  Future<void> _onAppResumed() async {
+    if (!mounted) return;
+    final notifGranted =
+        await NotificationService.instance.hasNotificationPermission();
+    if (!mounted) return;
+    if (notifGranted) {
+      context.read<ReminderBloc>().add(const RescheduleAllRemindersEvent());
+    } else {
+      context.read<ReminderBloc>().add(const LoadRemindersEvent());
+    }
+  }
+
+  Future<void> _ensureBatteryOptimization() async {
+    final isIgnored =
+        await NotificationService.instance.isBatteryOptimizationIgnored();
+    if (isIgnored || !mounted) return;
+
+    final allowed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.battery_saver_rounded,
+              color: AppColors.warning,
+              size: 24,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Background Reliability",
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          "To make sure your scheduled reminders arrive on time when the app is in the background, please disable battery optimization for Vault.",
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text(
+              "Not Now",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: const Color(0xFF0F0F14),
+            ),
+            child: const Text(
+              "Allow",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (allowed == true) {
+      await NotificationService.instance.requestIgnoreBatteryOptimizations();
+    }
+  }
+
   Future<bool> _ensureNotificationPermission() async {
-    final granted = await NotificationService.instance.hasNotificationPermission();
-    if (granted) return true;
+    final granted =
+        await NotificationService.instance.hasNotificationPermission();
+    if (granted) {
+      final exactGranted =
+          await NotificationService.instance.canScheduleExactAlarms();
+      if (!exactGranted) {
+        await NotificationService.instance.requestExactAlarmsPermission();
+      }
+      await _ensureBatteryOptimization();
+      return true;
+    }
     if (!mounted) return false;
 
     final allowed = await showDialog<bool>(
@@ -55,7 +160,10 @@ class _ManageRemindersPageState extends State<ManageRemindersPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text("Not Now", style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              "Not Now",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -65,19 +173,34 @@ class _ManageRemindersPageState extends State<ManageRemindersPage> {
               backgroundColor: AppColors.primary,
               foregroundColor: const Color(0xFF0F0F14),
             ),
-            child: const Text("Allow", style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text(
+              "Allow",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
     );
 
     if (allowed == true) {
-      final reqGranted = await NotificationService.instance.requestPermissions();
+      final reqGranted =
+          await NotificationService.instance.requestPermissions();
       if (reqGranted) {
-        if (mounted) context.read<ReminderBloc>().add(const LoadRemindersEvent());
+        final exactGranted =
+            await NotificationService.instance.canScheduleExactAlarms();
+        if (!exactGranted) {
+          await NotificationService.instance.requestExactAlarmsPermission();
+        }
+        await _ensureBatteryOptimization();
+        if (mounted) {
+          context.read<ReminderBloc>().add(
+            const RescheduleAllRemindersEvent(),
+          );
+        }
         return true;
       } else {
-        final permDenied = await NotificationService.instance.isPermissionPermanentlyDenied();
+        final permDenied =
+            await NotificationService.instance.isPermissionPermanentlyDenied();
         if (permDenied) {
           await NotificationService.instance.openSettings();
         }

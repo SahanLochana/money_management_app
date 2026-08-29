@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -17,6 +18,10 @@ class NotificationService {
 
   NotificationService._init();
 
+  void _log(String message) {
+    developer.log(message, name: 'NotificationService');
+  }
+
   String? get pendingPayload => _pendingPayload;
 
   void clearPendingPayload() {
@@ -35,13 +40,15 @@ class NotificationService {
       try {
         final TimezoneInfo tzInfo = await FlutterTimezone.getLocalTimezone();
         resolvedTzName = tzInfo.identifier;
-      } catch (_) {
+      } catch (e) {
+        _log('Error getting local timezone: $e, falling back to UTC');
         resolvedTzName = 'UTC';
       }
 
       try {
         final location = tz.getLocation(resolvedTzName);
         tz.setLocalLocation(location);
+        _log('Timezone initialized to: ${location.name}');
       } catch (_) {
         try {
           final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
@@ -54,19 +61,23 @@ class NotificationService {
               }, orElse: () => null);
           if (matchingLocation != null) {
             tz.setLocalLocation(matchingLocation);
+            _log('Timezone matched by offset: ${matchingLocation.name}');
           }
         } catch (_) {}
       }
-    } catch (_) {}
+    } catch (e) {
+      _log('Timezone init error: $e');
+    }
 
     const androidSettings = AndroidInitializationSettings(
-      '@mipmap/launcher_icon',
+      '@drawable/ic_stat_notification',
     );
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _notificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) {
+        _log('Notification tapped: ${response.payload}');
         if (response.payload != null && response.payload!.isNotEmpty) {
           _pendingPayload = response.payload;
         }
@@ -98,17 +109,20 @@ class NotificationService {
     if (details != null && details.didNotificationLaunchApp) {
       if (details.notificationResponse?.payload != null) {
         _pendingPayload = details.notificationResponse!.payload;
+        _log('App launched from notification: $_pendingPayload');
       }
     }
 
     _isInitialized = true;
+    _log('NotificationService initialized successfully');
   }
 
   Future<bool> hasNotificationPermission() async {
     try {
       final status = await Permission.notification.status;
       return status.isGranted;
-    } catch (_) {
+    } catch (e) {
+      _log('Error checking notification permission: $e');
       return false;
     }
   }
@@ -123,9 +137,12 @@ class NotificationService {
 
   Future<bool> canScheduleExactAlarms() async {
     try {
-      return await Permission.scheduleExactAlarm.isGranted;
-    } catch (_) {
-      return true;
+      final status = await Permission.scheduleExactAlarm.status;
+      _log('canScheduleExactAlarms status: $status');
+      return status.isGranted;
+    } catch (e) {
+      _log('Error checking scheduleExactAlarm status: $e');
+      return false;
     }
   }
 
@@ -138,7 +155,31 @@ class NotificationService {
       if (androidPlugin != null) {
         await androidPlugin.requestExactAlarmsPermission();
       }
-    } catch (_) {}
+    } catch (e) {
+      _log('Error requesting exact alarms permission: $e');
+    }
+  }
+
+  Future<bool> isBatteryOptimizationIgnored() async {
+    try {
+      final status = await Permission.ignoreBatteryOptimizations.status;
+      _log('isBatteryOptimizationIgnored status: $status');
+      return status.isGranted;
+    } catch (e) {
+      _log('Error checking ignoreBatteryOptimizations status: $e');
+      return false;
+    }
+  }
+
+  Future<bool> requestIgnoreBatteryOptimizations() async {
+    try {
+      final status = await Permission.ignoreBatteryOptimizations.request();
+      _log('requestIgnoreBatteryOptimizations result: $status');
+      return status.isGranted;
+    } catch (e) {
+      _log('Error requesting ignoreBatteryOptimizations: $e');
+      return false;
+    }
   }
 
   Future<bool> openSettings() async {
@@ -154,12 +195,13 @@ class NotificationService {
 
       if (androidPlugin != null) {
         await androidPlugin.requestNotificationsPermission();
-        await androidPlugin.requestExactAlarmsPermission();
       }
 
       final notifStatus = await Permission.notification.request();
+      _log('Requested notification permission: $notifStatus');
       return notifStatus.isGranted;
-    } catch (_) {
+    } catch (e) {
+      _log('Error in requestPermissions: $e');
       return false;
     }
   }
@@ -168,16 +210,25 @@ class NotificationService {
     ReminderSlot slot,
     String categoryName,
   ) async {
-    if (!slot.isActive || slot.id == null) return;
+    if (!slot.isActive || slot.id == null) {
+      _log('scheduleDailyReminder skipped (isActive=${slot.isActive}, id=${slot.id})');
+      return;
+    }
 
     try {
       final notifGranted = await Permission.notification.isGranted;
+      _log('scheduleDailyReminder slot #${slot.id} ($categoryName @ ${slot.time}): notifGranted=$notifGranted');
       if (!notifGranted) {
         final requested = await requestPermissions();
-        if (!requested) return;
+        if (!requested) {
+          _log('Cannot schedule reminder #${slot.id}: notification permission denied');
+          return;
+        }
       }
 
       final exactAlarmGranted = await canScheduleExactAlarms();
+      final batteryOptIgnored = await isBatteryOptimizationIgnored();
+      _log('Permissions status for #${slot.id}: exactAlarmGranted=$exactAlarmGranted, batteryOptIgnored=$batteryOptIgnored');
 
       final parts = slot.time.split(':');
       if (parts.length != 2) return;
@@ -196,6 +247,7 @@ class NotificationService {
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
+      _log('Scheduled date/time for #${slot.id}: $scheduledDate (tz: ${tz.local.name})');
 
       final String amountStr = slot.defaultAmount > 0
           ? 'Rs ${slot.defaultAmount.toStringAsFixed(0)}'
@@ -219,7 +271,8 @@ class NotificationService {
         channelDescription: 'Daily expense reminders for meal times',
         importance: Importance.high,
         priority: Priority.high,
-        icon: '@mipmap/launcher_icon',
+        icon: '@drawable/ic_stat_notification',
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
         color: AppColors.primary,
         category: AndroidNotificationCategory.reminder,
         subText: 'Daily Reminder',
@@ -235,6 +288,7 @@ class NotificationService {
 
       if (exactAlarmGranted) {
         try {
+          _log('Attempting exactAllowWhileIdle zonedSchedule for slot #${slot.id}');
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
             notificationTitle,
@@ -248,11 +302,15 @@ class NotificationService {
             payload: payload,
           );
           scheduled = true;
-        } catch (_) {}
+          _log('Successfully scheduled slot #${slot.id} with exactAllowWhileIdle');
+        } catch (e) {
+          _log('exactAllowWhileIdle failed for slot #${slot.id}: $e');
+        }
       }
 
       if (!scheduled) {
         try {
+          _log('Attempting inexactAllowWhileIdle fallback for slot #${slot.id}');
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
             notificationTitle,
@@ -265,9 +323,27 @@ class NotificationService {
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: payload,
           );
-        } catch (_) {}
+          _log('Successfully scheduled slot #${slot.id} with inexactAllowWhileIdle');
+        } catch (e) {
+          _log('inexactAllowWhileIdle failed for slot #${slot.id}: $e');
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      _log('Error in scheduleDailyReminder: $e');
+    }
+  }
+
+  Future<void> rescheduleAllReminders(
+    List<ReminderSlot> slots,
+    Map<int, String> categoryNames,
+  ) async {
+    _log('Rescheduling all ${slots.length} reminders...');
+    for (final slot in slots) {
+      if (slot.isActive && slot.id != null) {
+        final catName = categoryNames[slot.categoryId] ?? 'Expense Reminder';
+        await scheduleDailyReminder(slot, catName);
+      }
+    }
   }
 
   Future<void> scheduleReminder(ReminderSlot slot, String categoryName) =>
@@ -275,13 +351,20 @@ class NotificationService {
 
   Future<void> cancelReminder(int id) async {
     try {
+      _log('Canceling notification for reminder #$id');
       await _notificationsPlugin.cancel(id);
-    } catch (_) {}
+    } catch (e) {
+      _log('Error canceling reminder #$id: $e');
+    }
   }
 
   Future<void> cancelAllReminders() async {
     try {
+      _log('Canceling all scheduled notifications');
       await _notificationsPlugin.cancelAll();
-    } catch (_) {}
+    } catch (e) {
+      _log('Error canceling all notifications: $e');
+    }
   }
 }
+
