@@ -13,6 +13,11 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  static const String reminderChannelId = 'vault_expense_reminders_v2';
+  static const String reminderChannelName = 'Expense Reminders';
+  static const String reminderChannelDescription =
+      'Daily expense reminders for meal and spending times';
+
   bool _isInitialized = false;
   String? _pendingPayload;
 
@@ -92,16 +97,27 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (androidPlugin != null) {
+      // Delete legacy channel if it exists to ensure new settings apply
+      try {
+        await androidPlugin.deleteNotificationChannel('meal_reminders_channel');
+        _log('Cleaned up legacy notification channel: meal_reminders_channel');
+      } catch (e) {
+        _log('Legacy channel delete check: $e');
+      }
+
+      // Create high-importance v2 channel with public lockscreen visibility
       await androidPlugin.createNotificationChannel(
         const AndroidNotificationChannel(
-          'meal_reminders_channel',
-          'Meal Reminders',
-          description: 'Daily expense reminders for meal times',
-          importance: Importance.high,
+          reminderChannelId,
+          reminderChannelName,
+          description: reminderChannelDescription,
+          importance: Importance.max,
           playSound: true,
           enableVibration: true,
+          showBadge: true,
         ),
       );
+      _log('Created/updated notification channel: $reminderChannelId');
     }
 
     final details = await _notificationsPlugin
@@ -226,9 +242,10 @@ class NotificationService {
         }
       }
 
+      // Re-verify exact alarm and battery optimization status right at schedule time
       final exactAlarmGranted = await canScheduleExactAlarms();
       final batteryOptIgnored = await isBatteryOptimizationIgnored();
-      _log('Permissions status for #${slot.id}: exactAlarmGranted=$exactAlarmGranted, batteryOptIgnored=$batteryOptIgnored');
+      _log('Permissions at schedule instant for #${slot.id}: exactAlarmGranted=$exactAlarmGranted, batteryOptIgnored=$batteryOptIgnored');
 
       final parts = slot.time.split(':');
       if (parts.length != 2) return;
@@ -247,7 +264,8 @@ class NotificationService {
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
-      _log('Scheduled date/time for #${slot.id}: $scheduledDate (tz: ${tz.local.name})');
+      final durationUntil = scheduledDate.difference(now);
+      _log('Scheduled timestamp for #${slot.id}: $scheduledDate (in ${durationUntil.inMinutes} mins, local tz: ${tz.local.name})');
 
       final String amountStr = slot.defaultAmount > 0
           ? 'Rs ${slot.defaultAmount.toStringAsFixed(0)}'
@@ -266,15 +284,17 @@ class NotificationService {
       );
 
       final androidDetails = AndroidNotificationDetails(
-        'meal_reminders_channel',
-        'Meal Reminders',
-        channelDescription: 'Daily expense reminders for meal times',
-        importance: Importance.high,
-        priority: Priority.high,
+        reminderChannelId,
+        reminderChannelName,
+        channelDescription: reminderChannelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        visibility: NotificationVisibility.public,
         icon: '@drawable/ic_stat_notification',
         largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
         color: AppColors.primary,
         category: AndroidNotificationCategory.reminder,
+        audioAttributesUsage: AudioAttributesUsage.notification,
         subText: 'Daily Reminder',
         ticker: 'Time to track your expense!',
         styleInformation: bigTextStyleInformation,
@@ -288,7 +308,7 @@ class NotificationService {
 
       if (exactAlarmGranted) {
         try {
-          _log('Attempting exactAllowWhileIdle zonedSchedule for slot #${slot.id}');
+          _log('Executing exactAllowWhileIdle zonedSchedule for slot #${slot.id} on channel $reminderChannelId');
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
             notificationTitle,
@@ -302,15 +322,15 @@ class NotificationService {
             payload: payload,
           );
           scheduled = true;
-          _log('Successfully scheduled slot #${slot.id} with exactAllowWhileIdle');
+          _log('SUCCESS: Scheduled slot #${slot.id} with exactAllowWhileIdle');
         } catch (e) {
-          _log('exactAllowWhileIdle failed for slot #${slot.id}: $e');
+          _log('FAILURE: exactAllowWhileIdle failed for slot #${slot.id}: $e');
         }
       }
 
       if (!scheduled) {
         try {
-          _log('Attempting inexactAllowWhileIdle fallback for slot #${slot.id}');
+          _log('FALLBACK: Executing inexactAllowWhileIdle zonedSchedule for slot #${slot.id} on channel $reminderChannelId');
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
             notificationTitle,
@@ -323,9 +343,9 @@ class NotificationService {
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: payload,
           );
-          _log('Successfully scheduled slot #${slot.id} with inexactAllowWhileIdle');
+          _log('SUCCESS: Scheduled slot #${slot.id} with inexactAllowWhileIdle');
         } catch (e) {
-          _log('inexactAllowWhileIdle failed for slot #${slot.id}: $e');
+          _log('FAILURE: inexactAllowWhileIdle failed for slot #${slot.id}: $e');
         }
       }
     } catch (e) {
