@@ -53,7 +53,6 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Future<void> _addCategoryDialog() async {
     final nameCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
     String selectedEmoji = '🏷️';
     final emojis = [
       '🍳',
@@ -154,39 +153,6 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Default Amount (Optional)",
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: "0",
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    prefixText: "Rs ",
-                    prefixStyle: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.surfaceBorder,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -201,14 +167,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             ElevatedButton(
               onPressed: () {
                 final name = nameCtrl.text.trim();
-                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
                 if (name.isNotEmpty) {
                   Navigator.pop(
                     context,
                     Category(
                       name: name,
                       emoji: selectedEmoji,
-                      defaultAmountCents: (amt * 100).toInt(),
+                      defaultAmountCents: 0,
                       isSystem: false,
                     ),
                   );
@@ -884,38 +849,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        cat.name,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (cat.defaultAmount > 0) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          "Default: Rs ${cat.defaultAmount.toStringAsFixed(0)}",
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ] else if (cat.isSystem) ...[
-                        const SizedBox(height: 2),
-                        const Text(
-                          "System preset",
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ],
+                  child: Text(
+                    cat.name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -952,10 +892,17 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            gradient: LinearGradient(
+              colors: [
+                AppColors.income.withValues(alpha: 0.15),
+                AppColors.surface,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.surfaceBorder.withValues(alpha: 0.6),
+              color: AppColors.income.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -963,7 +910,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.income.withValues(alpha: 0.12),
+                  color: AppColors.income.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -978,7 +925,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${_incomeCategories.length} Income Sources",
+                      "${_incomeCategories.length} Income Categories",
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -987,7 +934,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     ),
                     const SizedBox(height: 2),
                     const Text(
-                      "Used when depositing allowances, bursaries, or extra funds into wallets.",
+                      "Used to tag your earnings when adding transactions",
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -1029,33 +976,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        cat.name,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isDefault
-                            ? "Default Income Source"
-                            : "Custom Income Source",
-                        style: TextStyle(
-                          color: isDefault
-                              ? AppColors.textMuted
-                              : AppColors.income,
-                          fontSize: 11,
-                          fontWeight: isDefault
-                              ? FontWeight.w500
-                              : FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    cat.name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (!isDefault)
