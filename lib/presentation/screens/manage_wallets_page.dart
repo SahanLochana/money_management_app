@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:money_management_app/domain/models/wallet.dart';
 import 'package:money_management_app/domain/models/wallet_fund.dart';
-import 'package:money_management_app/domain/repositories/wallet_repository.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/emoji_avatar.dart';
 
 class ManageWalletsPage extends StatefulWidget {
   const ManageWalletsPage({super.key});
@@ -35,19 +35,9 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
     final result = await showDialog<WalletFund>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.surfaceBorder),
-          ),
-          title: const Text(
-            "Add Funds to Wallet",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        builder: (context, setDialogState) => AppDialogShell(
+          title: "Add Funds to Wallet",
+          confirmLabel: "Add Funds",
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -147,37 +137,18 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
-                if (amt > 0) {
-                  final fund = WalletFund(
-                    walletId: selectedWalletId,
-                    amountCents: (amt * 100).toInt(),
-                    note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
-                    createdAt: DateTime.now().toIso8601String(),
-                  );
-                  Navigator.pop(context, fund);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Add Funds",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
+          onConfirm: () {
+            final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+            if (amt > 0) {
+              final fund = WalletFund(
+                walletId: selectedWalletId,
+                amountCents: (amt * 100).toInt(),
+                note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+                createdAt: DateTime.now().toIso8601String(),
+              );
+              Navigator.pop(context, fund);
+            }
+          },
         ),
       ),
     );
@@ -186,131 +157,6 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
       context.read<WalletBloc>().add(AddWalletFundsEvent(result));
       AppSnackBar.show(context, message: "Added Rs ${result.amount.toStringAsFixed(0)} to wallet");
     }
-  }
-
-  Future<void> _viewWalletFundHistory(Wallet wallet) async {
-    final repo = context.read<WalletRepository>();
-    final funds = await repo.getFundsForWallet(wallet.id);
-
-    if (!mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.textMuted.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text(wallet.emoji, style: const TextStyle(fontSize: 22)),
-                    const SizedBox(width: 10),
-                    Text(
-                      "${wallet.name} Fund History",
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (funds.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text(
-                        "No fund records yet for this wallet",
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                      ),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: funds.length,
-                      itemBuilder: (context, index) {
-                        final item = funds[index];
-                        String formattedDate = '';
-                        try {
-                          final dt = DateTime.parse(item.createdAt);
-                          formattedDate = DateFormat('d MMM yyyy, h:mm a').format(dt);
-                        } catch (_) {
-                          formattedDate = item.createdAt;
-                        }
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.note ?? "Fund deposit",
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    formattedDate,
-                                    style: const TextStyle(
-                                      color: AppColors.textMuted,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                "+Rs ${item.amount.toStringAsFixed(0)}",
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -478,18 +324,10 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
                           children: [
                             Row(
                               children: [
-                                Container(
-                                  width: 42,
-                                  height: 42,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceLight,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    wallet.emoji,
-                                    style: const TextStyle(fontSize: 20),
-                                  ),
+                                EmojiAvatar(
+                                  emoji: wallet.emoji,
+                                  size: 42,
+                                  fontSize: 20,
                                 ),
                                 const SizedBox(width: 12),
                                 Column(
@@ -589,44 +427,25 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _viewWalletFundHistory(wallet),
-                                icon: const Icon(Icons.history_rounded, size: 16),
-                                label: const Text("History"),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.textSecondary,
-                                  side: const BorderSide(color: AppColors.surfaceBorder),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                ),
-                              ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => _addFundsDialog(
+                              preselectedWallet: wallet,
+                              wallets: state.wallets,
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () => _addFundsDialog(
-                                  preselectedWallet: wallet,
-                                  wallets: state.wallets,
-                                ),
-                                icon: const Icon(Icons.add_rounded, size: 16),
-                                label: const Text("Add Funds"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: const Color(0xFF0F0F14),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                ),
+                            icon: const Icon(Icons.add_rounded, size: 16),
+                            label: const Text("Add Funds"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: const Color(0xFF0F0F14),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),

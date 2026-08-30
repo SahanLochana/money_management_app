@@ -1,15 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:money_management_app/domain/repositories/expense_repository.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_bloc.dart';
 import 'package:money_management_app/presentation/blocs/expense/expense_event.dart';
 import 'package:money_management_app/presentation/screens/manage_categories_page.dart';
 import 'package:money_management_app/presentation/screens/manage_reminders_page.dart';
 import 'package:money_management_app/presentation/screens/manage_wallets_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -21,11 +22,24 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   double _dailyBudget = 500.0;
+  String _appVersion = '1.0.0';
 
   @override
   void initState() {
     super.initState();
     _loadDailyBudget();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = packageInfo.version;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadDailyBudget() async {
@@ -48,20 +62,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final controller = TextEditingController(text: _dailyBudget.toStringAsFixed(0));
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: const Text(
-          "Edit Daily Budget",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      builder: (context) => AppDialogShell(
+        title: "Edit Daily Budget",
+        confirmLabel: "Save",
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -83,135 +86,30 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final val = double.tryParse(controller.text.trim());
-              if (val != null && val > 0) {
-                _updateDailyBudget(val);
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: const Color(0xFF0F0F14),
-            ),
-            child: const Text(
-              "Save",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
+        onConfirm: () {
+          final val = double.tryParse(controller.text.trim());
+          if (val != null && val > 0) {
+            _updateDailyBudget(val);
+            Navigator.pop(context);
+          }
+        },
       ),
     );
   }
 
   Future<void> _clearAllData() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: const Text(
-          "Clear All Data?",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: const Text(
+    final confirmed = await ConfirmActionDialog.show(
+      context,
+      title: "Clear All Data?",
+      message:
           "This will permanently delete all your expenses. Categories and wallet preferences will remain. This action cannot be undone.",
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.expense,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              "Clear Data",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+      confirmLabel: "Clear Data",
+      confirmColor: AppColors.expense,
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed && mounted) {
       context.read<ExpenseBloc>().add(const ClearAllExpensesEvent());
       AppSnackBar.show(context, message: "All expense data cleared");
-    }
-  }
-
-  Future<void> _exportData() async {
-    final repo = context.read<ExpenseRepository>();
-    final data = await repo.exportAllData();
-    final jsonString = jsonEncode(data);
-
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.surfaceBorder),
-          ),
-          title: const Text(
-            "Exported JSON Data",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: SelectableText(
-              jsonString,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Done",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -311,13 +209,6 @@ class _SettingsPageState extends State<SettingsPage> {
           const SectionHeader(title: "Data Management"),
           const SizedBox(height: 8),
           _buildSettingTile(
-            icon: Icons.file_download_outlined,
-            iconColor: AppColors.primary,
-            title: "Export Data",
-            subtitle: "Export records to JSON format",
-            onTap: _exportData,
-          ),
-          _buildSettingTile(
             icon: Icons.delete_outline_rounded,
             iconColor: AppColors.expense,
             title: "Clear All Data",
@@ -329,7 +220,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           Center(
             child: Text(
-              "Vault Money Manager • v1.0.0",
+              "Vault Money Manager • v$_appVersion",
               style: TextStyle(
                 color: AppColors.textMuted.withValues(alpha: 0.6),
                 fontSize: 12,

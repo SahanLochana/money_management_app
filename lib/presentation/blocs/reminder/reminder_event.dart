@@ -28,3 +28,8 @@ class ToggleReminderEvent extends ReminderEvent {
   final bool isActive;
   const ToggleReminderEvent({required this.id, required this.isActive});
 }
+
+class RescheduleAllRemindersEvent extends ReminderEvent {
+  const RescheduleAllRemindersEvent();
+}
+

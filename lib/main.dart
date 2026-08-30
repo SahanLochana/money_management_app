@@ -78,9 +78,6 @@ void main() async {
     },
   );
 
-  // Request Android Notification Permissions
-  await NotificationService.instance.requestPermissions();
-
   // Datasources
   final expenseDatasource = ExpenseLocalDatasource(appDatabase: appDb);
   final categoryDatasource = CategoryLocalDatasource(appDatabase: appDb);
@@ -96,16 +93,18 @@ void main() async {
   // Re-sync all active daily reminders with the system alarm manager
   try {
     final activeReminders = await reminderRepository.getAllReminders();
-    for (final slot in activeReminders) {
-      if (slot.isActive && slot.id != null) {
-        final cat = await categoryRepository.getCategoryById(slot.categoryId);
-        await NotificationService.instance.scheduleDailyReminder(
-          slot,
-          cat?.name ?? 'Expense Reminder',
-        );
-      }
-    }
-  } catch (_) {}
+    final categories = await categoryRepository.getAllCategories();
+    final catMap = {
+      for (final c in categories)
+        if (c.id != null) c.id!: c.name,
+    };
+    await NotificationService.instance.rescheduleAllReminders(
+      activeReminders,
+      catMap,
+    );
+  } catch (e) {
+    debugPrint('Error re-syncing reminders on startup: $e');
+  }
 
   final prefs = await SharedPreferences.getInstance();
   final isSetupDone = prefs.getBool('wallet_setup_done') ?? false;
