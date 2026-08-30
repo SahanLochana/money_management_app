@@ -395,6 +395,21 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
     }
   }
 
+  Future<void> _toggleReminder(ReminderSlot slot, bool val) async {
+    if (val) {
+      final allowed = await _ensureNotificationPermission();
+      if (!allowed) {
+        if (mounted) setState(() {});
+        return;
+      }
+    }
+    if (slot.id != null && mounted) {
+      context.read<ReminderBloc>().add(
+        ToggleReminderEvent(id: slot.id!, isActive: val),
+      );
+    }
+  }
+
   Future<void> _deleteReminderDialog(ReminderSlot slot, String title) async {
     final confirmed = await ConfirmActionDialog.show(
       context,
@@ -577,21 +592,7 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
                       title: title,
                       time: slot.time,
                       value: slot.isActive,
-                      onChanged: (val) async {
-                        final reminderBloc = context.read<ReminderBloc>();
-                        if (val) {
-                          final allowed = await _ensureNotificationPermission();
-                          if (!allowed) {
-                            if (mounted) setState(() {});
-                            return;
-                          }
-                        }
-                        if (slot.id != null) {
-                          reminderBloc.add(
-                            ToggleReminderEvent(id: slot.id!, isActive: val),
-                          );
-                        }
-                      },
+                      onChanged: (val) => _toggleReminder(slot, val),
                       onTimeTap: () => _editReminderTime(slot),
                       onDelete: () => _deleteReminderDialog(slot, title),
                     );

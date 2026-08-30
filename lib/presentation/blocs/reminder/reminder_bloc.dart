@@ -62,16 +62,7 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
       if (slotToSave.isActive) {
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
-          final granted = await NotificationService.instance.requestPermissions();
-          if (!granted) {
-            slotToSave = slotToSave.copyWith(isActive: false);
-          }
-        }
-        if (slotToSave.isActive) {
-          final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
-          if (!exactGranted) {
-            await NotificationService.instance.requestExactAlarmsPermission();
-          }
+          slotToSave = slotToSave.copyWith(isActive: false);
         }
       }
 
@@ -98,16 +89,7 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
       if (slotToUpdate.isActive) {
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
-          final granted = await NotificationService.instance.requestPermissions();
-          if (!granted) {
-            slotToUpdate = slotToUpdate.copyWith(isActive: false);
-          }
-        }
-        if (slotToUpdate.isActive) {
-          final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
-          if (!exactGranted) {
-            await NotificationService.instance.requestExactAlarmsPermission();
-          }
+          slotToUpdate = slotToUpdate.copyWith(isActive: false);
         }
       }
 
@@ -151,16 +133,7 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
       if (targetActive) {
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
-          final granted = await NotificationService.instance.requestPermissions();
-          if (!granted) {
-            targetActive = false;
-          }
-        }
-        if (targetActive) {
-          final exactGranted = await NotificationService.instance.canScheduleExactAlarms();
-          if (!exactGranted) {
-            await NotificationService.instance.requestExactAlarmsPermission();
-          }
+          targetActive = false;
         }
       }
 

@@ -235,11 +235,8 @@ class NotificationService {
       final notifGranted = await Permission.notification.isGranted;
       _log('scheduleDailyReminder slot #${slot.id} ($categoryName @ ${slot.time}): notifGranted=$notifGranted');
       if (!notifGranted) {
-        final requested = await requestPermissions();
-        if (!requested) {
-          _log('Cannot schedule reminder #${slot.id}: notification permission denied');
-          return;
-        }
+        _log('Cannot schedule reminder #${slot.id}: notification permission not granted');
+        return;
       }
 
       // Re-verify exact alarm and battery optimization status right at schedule time
