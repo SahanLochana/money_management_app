@@ -6,7 +6,9 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart'
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/emoji_avatar.dart';
 
 class ManageWalletsPage extends StatefulWidget {
   const ManageWalletsPage({super.key});
@@ -33,19 +35,9 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
     final result = await showDialog<WalletFund>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.surfaceBorder),
-          ),
-          title: const Text(
-            "Add Funds to Wallet",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        builder: (context, setDialogState) => AppDialogShell(
+          title: "Add Funds to Wallet",
+          confirmLabel: "Add Funds",
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -145,37 +137,18 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
-                if (amt > 0) {
-                  final fund = WalletFund(
-                    walletId: selectedWalletId,
-                    amountCents: (amt * 100).toInt(),
-                    note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
-                    createdAt: DateTime.now().toIso8601String(),
-                  );
-                  Navigator.pop(context, fund);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Add Funds",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
+          onConfirm: () {
+            final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+            if (amt > 0) {
+              final fund = WalletFund(
+                walletId: selectedWalletId,
+                amountCents: (amt * 100).toInt(),
+                note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+                createdAt: DateTime.now().toIso8601String(),
+              );
+              Navigator.pop(context, fund);
+            }
+          },
         ),
       ),
     );
@@ -351,18 +324,10 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
                           children: [
                             Row(
                               children: [
-                                Container(
-                                  width: 42,
-                                  height: 42,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceLight,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    wallet.emoji,
-                                    style: const TextStyle(fontSize: 20),
-                                  ),
+                                EmojiAvatar(
+                                  emoji: wallet.emoji,
+                                  size: 42,
+                                  fontSize: 20,
                                 ),
                                 const SizedBox(width: 12),
                                 Column(

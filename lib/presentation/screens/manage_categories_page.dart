@@ -12,7 +12,12 @@ import 'package:money_management_app/presentation/blocs/reminder/reminder_event.
 import 'package:money_management_app/presentation/blocs/stats/stats_bloc.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_event.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
+import 'package:money_management_app/presentation/widgets/emoji_avatar.dart';
+import 'package:money_management_app/presentation/widgets/emoji_picker_grid.dart';
+import 'package:money_management_app/presentation/widgets/info_banner_card.dart';
 
 enum CategoryTab { expense, income }
 
@@ -32,6 +37,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   late CategoryTab _currentTab;
   List<IncomeCategory> _incomeCategories = [];
   bool _isLoadingIncome = true;
+
+  Color get _tabAccent =>
+      _currentTab == CategoryTab.expense ? AppColors.primary : AppColors.income;
 
   @override
   void initState() {
@@ -78,19 +86,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     final created = await showDialog<Category>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.surfaceBorder),
-          ),
-          title: const Text(
-            "Add Expense Category",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        builder: (context, setDialogState) => AppDialogShell(
+          title: "Add Expense Category",
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -104,28 +101,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: emojis.map((e) {
-                    final isSelected = selectedEmoji == e;
-                    return GestureDetector(
-                      onTap: () => setDialogState(() => selectedEmoji = e),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.2)
-                              : AppColors.surfaceLight,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: AppColors.primary, width: 2)
-                              : null,
-                        ),
-                        child: Text(e, style: const TextStyle(fontSize: 20)),
-                      ),
-                    );
-                  }).toList(),
+                EmojiPickerGrid(
+                  emojis: emojis,
+                  selectedEmoji: selectedEmoji,
+                  onSelected: (e) => setDialogState(() => selectedEmoji = e),
+                  accentColor: AppColors.primary,
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -156,39 +136,20 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameCtrl.text.trim();
-                if (name.isNotEmpty) {
-                  Navigator.pop(
-                    context,
-                    Category(
-                      name: name,
-                      emoji: selectedEmoji,
-                      defaultAmountCents: 0,
-                      isSystem: false,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Add",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
+          onConfirm: () {
+            final name = nameCtrl.text.trim();
+            if (name.isNotEmpty) {
+              Navigator.pop(
+                context,
+                Category(
+                  name: name,
+                  emoji: selectedEmoji,
+                  defaultAmountCents: 0,
+                  isSystem: false,
+                ),
+              );
+            }
+          },
         ),
       ),
     );
@@ -208,20 +169,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
     final created = await showDialog<IncomeCategory?>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: const Text(
-          "Add Income Category",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      builder: (dialogCtx) => AppDialogShell(
+        title: "Add Income Category",
+        confirmColor: AppColors.income,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,46 +264,20 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              final emoji = emojiCtrl.text.trim().isNotEmpty
-                  ? emojiCtrl.text.trim()
-                  : '💰';
-              if (name.isNotEmpty) {
-                final newCat = IncomeCategory(
-                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                  name: name,
-                  emoji: emoji,
-                );
-                Navigator.pop(dialogCtx, newCat);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.income,
-              foregroundColor: const Color(0xFF0F0F14),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              "Add",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
+        onConfirm: () {
+          final name = nameCtrl.text.trim();
+          final emoji = emojiCtrl.text.trim().isNotEmpty
+              ? emojiCtrl.text.trim()
+              : '💰';
+          if (name.isNotEmpty) {
+            final newCat = IncomeCategory(
+              id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+              name: name,
+              emoji: emoji,
+            );
+            Navigator.pop(dialogCtx, newCat);
+          }
+        },
       ),
     );
 
@@ -370,104 +294,48 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   }
 
   Future<void> _deleteCategoryDialog(Category cat) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
+    final confirmed = await ConfirmActionDialog.show(
+      context,
+      title: "Delete '${cat.name}'?",
+      titleIcon: Icons.warning_amber_rounded,
+      titleIconColor: AppColors.expense,
+      message: "Are you sure you want to delete ${cat.emoji} ${cat.name}?",
+      confirmLabel: "Delete Category",
+      confirmColor: AppColors.expense,
+      infoBox: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.expense.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.expense.withValues(alpha: 0.3),
+          ),
         ),
-        title: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: AppColors.expense,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                "Delete '${cat.name}'?",
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Are you sure you want to delete ${cat.emoji} ${cat.name}?",
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+            Icon(
+              Icons.info_outline_rounded,
+              color: AppColors.expense,
+              size: 18,
             ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.expense.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.expense.withValues(alpha: 0.3),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Any existing transactions under this category will automatically be reassigned to 'Other'.",
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.3,
                 ),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.expense,
-                    size: 18,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "Any existing transactions under this category will automatically be reassigned to 'Other'.",
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.expense,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              "Delete Category",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
       ),
     );
 
-    if (confirmed == true && mounted && cat.id != null) {
+    if (confirmed && mounted && cat.id != null) {
       context.read<CategoryBloc>().add(DeleteCategoryEvent(cat.id!));
       context.read<ExpenseBloc>().add(const LoadExpenses());
       context.read<ReminderBloc>().add(const LoadRemindersEvent());
@@ -496,59 +364,15 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: AppColors.expense,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                "Delete '${cat.name}'?",
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
+    final confirmed = await ConfirmActionDialog.show(
+      context,
+      title: "Delete '${cat.name}'?",
+      titleIcon: Icons.warning_amber_rounded,
+      titleIconColor: AppColors.expense,
+      message:
           "Are you sure you want to remove ${cat.emoji} ${cat.name} from income categories?",
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.expense,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              "Delete",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+      confirmLabel: "Delete",
+      confirmColor: AppColors.expense,
     );
 
     if (confirmed == true && mounted) {
@@ -598,9 +422,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                   : _addIncomeCategoryDialog,
               icon: Icon(
                 Icons.add_rounded,
-                color: _currentTab == CategoryTab.expense
-                    ? AppColors.primary
-                    : AppColors.income,
+                color: _tabAccent,
                 size: 18,
               ),
               label: Text(
@@ -608,19 +430,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                     ? "Add Expense"
                     : "Add Income",
                 style: TextStyle(
-                  color: _currentTab == CategoryTab.expense
-                      ? AppColors.primary
-                      : AppColors.income,
+                  color: _tabAccent,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
               ),
               style: TextButton.styleFrom(
-                backgroundColor:
-                    (_currentTab == CategoryTab.expense
-                            ? AppColors.primary
-                            : AppColors.income)
-                        .withValues(alpha: 0.12),
+                backgroundColor: _tabAccent.withValues(alpha: 0.12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -772,56 +588,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
         // Info Banner
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.surfaceBorder.withValues(alpha: 0.6),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.expense.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.receipt_long_rounded,
-                  color: AppColors.expense,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "${categories.length} Expense Categories",
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      "Used to track daily meals, shopping, transport & other expenses.",
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        InfoBannerCard(
+          icon: Icons.receipt_long_rounded,
+          iconColor: AppColors.expense,
+          title: "${categories.length} Expense Categories",
+          subtitle:
+              "Used to track daily meals, shopping, transport & other expenses.",
         ),
 
         ...categories.map((cat) {
@@ -837,16 +609,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(cat.emoji, style: const TextStyle(fontSize: 22)),
-                ),
+                EmojiAvatar(emoji: cat.emoji),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
@@ -888,62 +651,18 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
         // Info Banner
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.income.withValues(alpha: 0.15),
-                AppColors.surface,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.income.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.income.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: AppColors.income,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "${_incomeCategories.length} Income Categories",
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      "Used to tag your earnings when adding transactions",
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        InfoBannerCard(
+          icon: Icons.account_balance_wallet_rounded,
+          iconColor: AppColors.income,
+          title: "${_incomeCategories.length} Income Categories",
+          subtitle: "Used to tag your earnings when adding transactions",
+          gradient: LinearGradient(
+            colors: [
+              AppColors.income.withValues(alpha: 0.15),
+              AppColors.surface,
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
 
@@ -964,16 +683,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(cat.emoji, style: const TextStyle(fontSize: 22)),
-                ),
+                EmojiAvatar(emoji: cat.emoji),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(

@@ -9,7 +9,10 @@ import 'package:money_management_app/presentation/blocs/reminder/reminder_bloc.d
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
+import 'package:money_management_app/presentation/widgets/info_banner_card.dart';
 import 'package:money_management_app/presentation/widgets/reminder_card.dart';
 import 'package:money_management_app/services/notification_service.dart';
 
@@ -26,8 +29,8 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    context.read<ReminderBloc>().add(const LoadRemindersEvent());
     context.read<CategoryBloc>().add(const LoadCategoriesEvent());
+    context.read<ReminderBloc>().add(const LoadRemindersEvent());
   }
 
   @override
@@ -39,12 +42,11 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _onAppResumed();
+      _checkPermissionsOnResume();
     }
   }
 
-  Future<void> _onAppResumed() async {
-    if (!mounted) return;
+  Future<void> _checkPermissionsOnResume() async {
     final notifGranted =
         await NotificationService.instance.hasNotificationPermission();
     if (!mounted) return;
@@ -60,66 +62,20 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
         await NotificationService.instance.isBatteryOptimizationIgnored();
     if (isIgnored || !mounted) return;
 
-    final allowed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: const Row(
-          children: [
-            Icon(
-              Icons.battery_saver_rounded,
-              color: AppColors.warning,
-              size: 24,
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                "Background Reliability",
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
+    final allowed = await ConfirmActionDialog.show(
+      context,
+      title: "Background Reliability",
+      titleIcon: Icons.battery_saver_rounded,
+      titleIconColor: AppColors.warning,
+      message:
           "To make sure your scheduled reminders arrive on time when the app is in the background, please disable battery optimization for Vault.",
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text(
-              "Not Now",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: const Color(0xFF0F0F14),
-            ),
-            child: const Text(
-              "Allow",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+      cancelLabel: "Not Now",
+      confirmLabel: "Allow",
+      confirmColor: AppColors.primary,
+      confirmTextColor: const Color(0xFF0F0F14),
     );
 
-    if (allowed == true) {
+    if (allowed) {
       await NotificationService.instance.requestIgnoreBatteryOptimizations();
     }
   }
@@ -138,51 +94,18 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
     }
     if (!mounted) return false;
 
-    final allowed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: const Text(
-          "Notifications Disabled",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: const Text(
+    final allowed = await ConfirmActionDialog.show(
+      context,
+      title: "Notifications Disabled",
+      message:
           "To receive your daily spending reminders, please enable notifications.",
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text(
-              "Not Now",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(dialogCtx, true);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: const Color(0xFF0F0F14),
-            ),
-            child: const Text(
-              "Allow",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+      cancelLabel: "Not Now",
+      confirmLabel: "Allow",
+      confirmColor: AppColors.primary,
+      confirmTextColor: const Color(0xFF0F0F14),
     );
 
-    if (allowed == true) {
+    if (allowed) {
       final reqGranted =
           await NotificationService.instance.requestPermissions();
       if (reqGranted) {
@@ -235,19 +158,8 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
     final created = await showDialog<ReminderSlot>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.surfaceBorder),
-          ),
-          title: const Text(
-            "Add Daily Reminder",
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        builder: (context, setDialogState) => AppDialogShell(
+          title: "Add Daily Reminder",
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -410,40 +322,21 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: AppColors.textSecondary),
+          onConfirm: () {
+            final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+            final timeStr =
+                '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+            Navigator.pop(
+              context,
+              ReminderSlot(
+                categoryId: selectedCatId,
+                time: timeStr,
+                defaultAmountCents: (amt * 100).toInt(),
+                isActive: true,
+                isSystem: false,
               ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final amt = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
-                final timeStr =
-                    '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-                Navigator.pop(
-                  context,
-                  ReminderSlot(
-                    categoryId: selectedCatId,
-                    time: timeStr,
-                    defaultAmountCents: (amt * 100).toInt(),
-                    isActive: true,
-                    isSystem: false,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: const Color(0xFF0F0F14),
-              ),
-              child: const Text(
-                "Add",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -503,49 +396,15 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
   }
 
   Future<void> _deleteReminderDialog(ReminderSlot slot, String title) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.surfaceBorder),
-        ),
-        title: const Text(
-          "Delete Reminder?",
-          style: TextStyle(
-            color: AppColors.expense,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Text(
-          "Are you sure you want to delete the '$title' at ${slot.time}?",
-          style: const TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.expense,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              "Delete",
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmActionDialog.show(
+      context,
+      title: "Delete Reminder?",
+      message: "Are you sure you want to delete the '$title' at ${slot.time}?",
+      confirmLabel: "Delete",
+      confirmColor: AppColors.expense,
     );
 
-    if (confirmed == true && mounted && slot.id != null) {
+    if (confirmed && mounted && slot.id != null) {
       context.read<ReminderBloc>().add(DeleteReminderEvent(slot.id!));
       AppSnackBar.show(context, message: "Deleted '$title'");
     }
@@ -618,62 +477,21 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               children: [
                 // Info Banner
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.15),
-                        AppColors.surface,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.notifications_active_rounded,
-                          color: AppColors.primary,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "$activeCount Active Reminder${activeCount == 1 ? '' : 's'}",
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              "Tap any card to quickly adjust notification time",
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                InfoBannerCard(
+                  icon: Icons.notifications_active_rounded,
+                  iconColor: AppColors.primary,
+                  iconSize: 22,
+                  iconBgColor: AppColors.primary.withValues(alpha: 0.2),
+                  title:
+                      "$activeCount Active Reminder${activeCount == 1 ? '' : 's'}",
+                  subtitle: "Tap any card to quickly adjust notification time",
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.15),
+                      AppColors.surface,
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
 
