@@ -148,11 +148,41 @@ class AppDatabase {
   Future<void> _seedDefaultData(Database db) async {
     // Seed system categories
     final categories = [
-      {'name': 'Breakfast', 'emoji': '🍳', 'default_amount_cents': 8000, 'is_system': 1, 'is_deleted': 0},
-      {'name': 'Lunch', 'emoji': '🍔', 'default_amount_cents': 15000, 'is_system': 1, 'is_deleted': 0},
-      {'name': 'Dinner', 'emoji': '🌙', 'default_amount_cents': 18000, 'is_system': 1, 'is_deleted': 0},
-      {'name': 'Lending', 'emoji': '🤝', 'default_amount_cents': 0, 'is_system': 1, 'is_deleted': 0},
-      {'name': 'Other', 'emoji': '🍿', 'default_amount_cents': 0, 'is_system': 1, 'is_deleted': 0},
+      {
+        'name': 'Breakfast',
+        'emoji': '🍳',
+        'default_amount_cents': 8000,
+        'is_system': 1,
+        'is_deleted': 0,
+      },
+      {
+        'name': 'Lunch',
+        'emoji': '🍔',
+        'default_amount_cents': 15000,
+        'is_system': 1,
+        'is_deleted': 0,
+      },
+      {
+        'name': 'Dinner',
+        'emoji': '🌙',
+        'default_amount_cents': 18000,
+        'is_system': 1,
+        'is_deleted': 0,
+      },
+      {
+        'name': 'Lending',
+        'emoji': '🤝',
+        'default_amount_cents': 0,
+        'is_system': 1,
+        'is_deleted': 0,
+      },
+      {
+        'name': 'Other',
+        'emoji': '🍿',
+        'default_amount_cents': 0,
+        'is_system': 1,
+        'is_deleted': 0,
+      },
     ];
 
     for (final cat in categories) {
@@ -171,9 +201,13 @@ class AppDatabase {
 
     // Seed default reminder slots
     final reminderSlots = [
-      {'category_id': 1, 'time': '08:00', 'default_amount_cents': 8000, 'is_active': 1, 'is_system': 1},
-      {'category_id': 2, 'time': '13:00', 'default_amount_cents': 15000, 'is_active': 1, 'is_system': 1},
-      {'category_id': 3, 'time': '20:00', 'default_amount_cents': 18000, 'is_active': 1, 'is_system': 1},
+      {
+        'category_id': 1,
+        'time': '08:00',
+        'default_amount_cents': 8000,
+        'is_active': 0,
+        'is_system': 1,
+      },
     ];
 
     for (final slot in reminderSlots) {
