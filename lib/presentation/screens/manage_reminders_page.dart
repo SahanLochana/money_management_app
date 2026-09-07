@@ -16,6 +16,10 @@ import 'package:money_management_app/presentation/widgets/info_banner_card.dart'
 import 'package:money_management_app/presentation/widgets/reminder_card.dart';
 import 'package:money_management_app/services/notification_service.dart';
 
+/// Set to true to show the debug test notification trigger.
+/// Easy to toggle or strip before final production release.
+const bool kDebugLoggingEnabled = true;
+
 class ManageRemindersPage extends StatefulWidget {
   const ManageRemindersPage({super.key});
 
@@ -49,6 +53,18 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
   Future<void> _checkPermissionsOnResume() async {
     final notifGranted =
         await NotificationService.instance.hasNotificationPermission();
+    final exactAlarmGranted =
+        await NotificationService.instance.canScheduleExactAlarms();
+    final batteryIgnored =
+        await NotificationService.instance.isBatteryOptimizationIgnored();
+
+    NotificationService.log(
+      'Lifecycle RESUMED (_checkPermissionsOnResume): '
+      'notificationGranted=$notifGranted, '
+      'exactAlarmGranted=$exactAlarmGranted, '
+      'batteryOptimizationIgnored=$batteryIgnored',
+    );
+
     if (!mounted) return;
     if (notifGranted) {
       context.read<ReminderBloc>().add(const RescheduleAllRemindersEvent());
@@ -60,6 +76,9 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
   Future<void> _ensureBatteryOptimization() async {
     final isIgnored =
         await NotificationService.instance.isBatteryOptimizationIgnored();
+    NotificationService.log(
+      '_ensureBatteryOptimization: isBatteryOptimizationIgnored=$isIgnored',
+    );
     if (isIgnored || !mounted) return;
 
     final allowed = await ConfirmActionDialog.show(
@@ -76,16 +95,30 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
     );
 
     if (allowed) {
-      await NotificationService.instance.requestIgnoreBatteryOptimizations();
+      final reqResult =
+          await NotificationService.instance.requestIgnoreBatteryOptimizations();
+      NotificationService.log(
+        '_ensureBatteryOptimization: user allowed dialog, requestIgnoreBatteryOptimizations result=$reqResult',
+      );
+    } else {
+      NotificationService.log(
+        '_ensureBatteryOptimization: user dismissed background reliability dialog',
+      );
     }
   }
 
   Future<bool> _ensureNotificationPermission() async {
     final granted =
         await NotificationService.instance.hasNotificationPermission();
+    NotificationService.log(
+      '_ensureNotificationPermission: initial notificationGranted=$granted',
+    );
     if (granted) {
       final exactGranted =
           await NotificationService.instance.canScheduleExactAlarms();
+      NotificationService.log(
+        '_ensureNotificationPermission: exactGranted=$exactGranted',
+      );
       if (!exactGranted) {
         await NotificationService.instance.requestExactAlarmsPermission();
       }
@@ -108,9 +141,15 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
     if (allowed) {
       final reqGranted =
           await NotificationService.instance.requestPermissions();
+      NotificationService.log(
+        '_ensureNotificationPermission: user allowed dialog, requestPermissions result=$reqGranted',
+      );
       if (reqGranted) {
         final exactGranted =
             await NotificationService.instance.canScheduleExactAlarms();
+        NotificationService.log(
+          '_ensureNotificationPermission: after requestPermissions, exactGranted=$exactGranted',
+        );
         if (!exactGranted) {
           await NotificationService.instance.requestExactAlarmsPermission();
         }
@@ -124,10 +163,17 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
       } else {
         final permDenied =
             await NotificationService.instance.isPermissionPermanentlyDenied();
+        NotificationService.log(
+          '_ensureNotificationPermission: permission permanently denied = $permDenied',
+        );
         if (permDenied) {
           await NotificationService.instance.openSettings();
         }
       }
+    } else {
+      NotificationService.log(
+        '_ensureNotificationPermission: user dismissed notification permission dialog',
+      );
     }
     return false;
   }
@@ -509,6 +555,98 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
                     end: Alignment.bottomRight,
                   ),
                 ),
+
+                if (kDebugLoggingEnabled) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.bug_report_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Pipeline Test (Debug)",
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                "Fires zonedSchedule 30s from now",
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: () async {
+                            final allowed =
+                                await _ensureNotificationPermission();
+                            if (allowed) {
+                              NotificationService.log(
+                                'UI: Test notification button pressed, requesting 30s test schedule',
+                              );
+                              await NotificationService.instance
+                                  .scheduleTestNotification(delaySeconds: 30);
+                              if (context.mounted) {
+                                AppSnackBar.show(
+                                  context,
+                                  message:
+                                      "🧪 Test reminder scheduled for 30s from now! Check logcat.",
+                                );
+                              }
+                            }
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: const Color(0xFF0F0F14),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            "Fire 30s",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 if (state.reminders.isEmpty)
                   Container(

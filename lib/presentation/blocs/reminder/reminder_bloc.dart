@@ -26,6 +26,7 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     Emitter<ReminderState> emit,
   ) async {
     try {
+      NotificationService.log('ReminderBloc: _onRescheduleAllReminders triggered');
       final reminders = await reminderRepository.getAllReminders();
       final categories = await categoryRepository.getAllCategories();
       final catMap = {
@@ -34,7 +35,8 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
       };
       await NotificationService.instance.rescheduleAllReminders(reminders, catMap);
       emit(ReminderLoaded(reminders: reminders, categories: categories));
-    } catch (e) {
+    } catch (e, st) {
+      NotificationService.log('ReminderBloc: _onRescheduleAllReminders error: $e', error: e, stackTrace: st);
       emit(ReminderError(e.toString()));
     }
   }
@@ -47,8 +49,10 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     try {
       final reminders = await reminderRepository.getAllReminders();
       final categories = await categoryRepository.getAllCategories();
+      NotificationService.log('ReminderBloc: _onLoadReminders loaded ${reminders.length} reminders');
       emit(ReminderLoaded(reminders: reminders, categories: categories));
-    } catch (e) {
+    } catch (e, st) {
+      NotificationService.log('ReminderBloc: _onLoadReminders error: $e', error: e, stackTrace: st);
       emit(ReminderError(e.toString()));
     }
   }
@@ -59,9 +63,11 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
   ) async {
     try {
       var slotToSave = event.slot;
+      NotificationService.log('ReminderBloc: _onAddReminder for time=${slotToSave.time}, cat=${slotToSave.categoryId}');
       if (slotToSave.isActive) {
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
+          NotificationService.log('ReminderBloc: Disabling reminder on add because notification permission is false');
           slotToSave = slotToSave.copyWith(isActive: false);
         }
       }
@@ -75,7 +81,8 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
         );
       }
       add(const LoadRemindersEvent());
-    } catch (e) {
+    } catch (e, st) {
+      NotificationService.log('ReminderBloc: _onAddReminder error: $e', error: e, stackTrace: st);
       emit(ReminderError(e.toString()));
     }
   }
@@ -86,9 +93,11 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
   ) async {
     try {
       var slotToUpdate = event.slot;
+      NotificationService.log('ReminderBloc: _onUpdateReminder for slot #${slotToUpdate.id}');
       if (slotToUpdate.isActive) {
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
+          NotificationService.log('ReminderBloc: Disabling reminder on update because notification permission is false');
           slotToUpdate = slotToUpdate.copyWith(isActive: false);
         }
       }
@@ -106,7 +115,8 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
         }
       }
       add(const LoadRemindersEvent());
-    } catch (e) {
+    } catch (e, st) {
+      NotificationService.log('ReminderBloc: _onUpdateReminder error: $e', error: e, stackTrace: st);
       emit(ReminderError(e.toString()));
     }
   }
@@ -116,10 +126,12 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
     Emitter<ReminderState> emit,
   ) async {
     try {
+      NotificationService.log('ReminderBloc: _onDeleteReminder for slot #${event.id}');
       await NotificationService.instance.cancelReminder(event.id);
       await reminderRepository.deleteReminder(event.id);
       add(const LoadRemindersEvent());
-    } catch (e) {
+    } catch (e, st) {
+      NotificationService.log('ReminderBloc: _onDeleteReminder error: $e', error: e, stackTrace: st);
       emit(ReminderError(e.toString()));
     }
   }
@@ -130,9 +142,11 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
   ) async {
     try {
       bool targetActive = event.isActive;
+      NotificationService.log('ReminderBloc: _onToggleReminder for slot #${event.id} targetActive=$targetActive');
       if (targetActive) {
         final hasPerm = await NotificationService.instance.hasNotificationPermission();
         if (!hasPerm) {
+          NotificationService.log('ReminderBloc: Cannot toggle active because notification permission is false');
           targetActive = false;
         }
       }
@@ -150,7 +164,8 @@ class ReminderBloc extends Bloc<ReminderEvent, ReminderState> {
         await NotificationService.instance.cancelReminder(event.id);
       }
       add(const LoadRemindersEvent());
-    } catch (e) {
+    } catch (e, st) {
+      NotificationService.log('ReminderBloc: _onToggleReminder error: $e', error: e, stackTrace: st);
       emit(ReminderError(e.toString()));
     }
   }

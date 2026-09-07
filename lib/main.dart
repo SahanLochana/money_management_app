@@ -34,6 +34,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void _handleNotificationPayload(String? payload) {
+  NotificationService.log('_handleNotificationPayload received payload: "$payload"');
   if (payload == null || payload.isEmpty) return;
   try {
     final parts = payload.split('|');
@@ -52,11 +53,14 @@ void _handleNotificationPayload(String? payload) {
         ),
       );
     }
-  } catch (_) {}
+  } catch (e, st) {
+    NotificationService.log('Error handling notification payload: $e', error: e, stackTrace: st);
+  }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  NotificationService.log('main() entered: starting app initialization');
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -78,8 +82,8 @@ void main() async {
         _handleNotificationPayload(response.payload);
       },
     );
-  } catch (e) {
-    debugPrint('Error initializing NotificationService on startup: $e');
+  } catch (e, st) {
+    NotificationService.log('Error initializing NotificationService on startup: $e', error: e, stackTrace: st);
   }
 
   // Datasources
@@ -98,6 +102,7 @@ void main() async {
   try {
     final activeReminders = await reminderRepository.getAllReminders();
     final categories = await categoryRepository.getAllCategories();
+    NotificationService.log('Startup: Re-syncing ${activeReminders.length} reminders from repository');
     final catMap = {
       for (final c in categories)
         if (c.id != null) c.id!: c.name,
@@ -106,8 +111,8 @@ void main() async {
       activeReminders,
       catMap,
     );
-  } catch (e) {
-    debugPrint('Error re-syncing reminders on startup: $e');
+  } catch (e, st) {
+    NotificationService.log('Error re-syncing reminders on startup: $e', error: e, stackTrace: st);
   }
 
   final prefs = await SharedPreferences.getInstance();
