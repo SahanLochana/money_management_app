@@ -74,63 +74,67 @@ class NotificationService {
       _log('Timezone init error: $e');
     }
 
-    const androidSettings = AndroidInitializationSettings(
-      '@drawable/ic_stat_notification',
-    );
-    const initSettings = InitializationSettings(android: androidSettings);
-
-    await _notificationsPlugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (response) {
-        _log('Notification tapped: ${response.payload}');
-        if (response.payload != null && response.payload!.isNotEmpty) {
-          _pendingPayload = response.payload;
-        }
-        if (onDidReceiveNotificationResponse != null) {
-          onDidReceiveNotificationResponse(response);
-        }
-      },
-    );
-
-    final androidPlugin = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    if (androidPlugin != null) {
-      // Delete legacy channel if it exists to ensure new settings apply
-      try {
-        await androidPlugin.deleteNotificationChannel('meal_reminders_channel');
-        _log('Cleaned up legacy notification channel: meal_reminders_channel');
-      } catch (e) {
-        _log('Legacy channel delete check: $e');
-      }
-
-      // Create high-importance v2 channel with public lockscreen visibility
-      await androidPlugin.createNotificationChannel(
-        const AndroidNotificationChannel(
-          reminderChannelId,
-          reminderChannelName,
-          description: reminderChannelDescription,
-          importance: Importance.max,
-          playSound: true,
-          enableVibration: true,
-          showBadge: true,
-        ),
+    try {
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
       );
-      _log('Created/updated notification channel: $reminderChannelId');
-    }
+      const initSettings = InitializationSettings(android: androidSettings);
 
-    final details = await _notificationsPlugin
-        .getNotificationAppLaunchDetails();
-    if (details != null && details.didNotificationLaunchApp) {
-      if (details.notificationResponse?.payload != null) {
-        _pendingPayload = details.notificationResponse!.payload;
-        _log('App launched from notification: $_pendingPayload');
+      await _notificationsPlugin.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (response) {
+          _log('Notification tapped: ${response.payload}');
+          if (response.payload != null && response.payload!.isNotEmpty) {
+            _pendingPayload = response.payload;
+          }
+          if (onDidReceiveNotificationResponse != null) {
+            onDidReceiveNotificationResponse(response);
+          }
+        },
+      );
+
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (androidPlugin != null) {
+        // Delete legacy channel if it exists to ensure new settings apply
+        try {
+          await androidPlugin.deleteNotificationChannel('meal_reminders_channel');
+          _log('Cleaned up legacy notification channel: meal_reminders_channel');
+        } catch (e) {
+          _log('Legacy channel delete check: $e');
+        }
+
+        // Create high-importance v2 channel with public lockscreen visibility
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            reminderChannelId,
+            reminderChannelName,
+            description: reminderChannelDescription,
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+            showBadge: true,
+          ),
+        );
+        _log('Created/updated notification channel: $reminderChannelId');
       }
-    }
 
-    _isInitialized = true;
-    _log('NotificationService initialized successfully');
+      final details = await _notificationsPlugin
+          .getNotificationAppLaunchDetails();
+      if (details != null && details.didNotificationLaunchApp) {
+        if (details.notificationResponse?.payload != null) {
+          _pendingPayload = details.notificationResponse!.payload;
+          _log('App launched from notification: $_pendingPayload');
+        }
+      }
+
+      _isInitialized = true;
+      _log('NotificationService initialized successfully');
+    } catch (e) {
+      _log('Failed to initialize local notifications plugin: $e');
+    }
   }
 
   Future<bool> hasNotificationPermission() async {
@@ -287,7 +291,7 @@ class NotificationService {
         importance: Importance.max,
         priority: Priority.max,
         visibility: NotificationVisibility.public,
-        icon: '@drawable/ic_stat_notification',
+        icon: '@mipmap/ic_launcher',
         largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
         color: AppColors.primary,
         category: AndroidNotificationCategory.reminder,

@@ -72,11 +72,15 @@ void main() async {
   await appDb.database;
 
   // Initialize Notification Service
-  await NotificationService.instance.initialize(
-    onDidReceiveNotificationResponse: (response) {
-      _handleNotificationPayload(response.payload);
-    },
-  );
+  try {
+    await NotificationService.instance.initialize(
+      onDidReceiveNotificationResponse: (response) {
+        _handleNotificationPayload(response.payload);
+      },
+    );
+  } catch (e) {
+    debugPrint('Error initializing NotificationService on startup: $e');
+  }
 
   // Datasources
   final expenseDatasource = ExpenseLocalDatasource(appDatabase: appDb);
