@@ -347,6 +347,10 @@ class NotificationService {
       final batteryOptIgnored = await isBatteryOptimizationIgnored();
       _log('Permissions at schedule instant for #${slot.id}: exactAlarmGranted=$exactAlarmGranted, batteryOptIgnored=$batteryOptIgnored');
 
+      // Pre-cancel: cancel existing alarm for this slot ID before re-scheduling to avoid conflicting or duplicate alarms
+      _log('PRE-CANCEL: Canceling any existing alarm for #${slot.id} before re-scheduling');
+      await _notificationsPlugin.cancel(slot.id!);
+
       final parts = slot.time.split(':');
       if (parts.length != 2) {
         _log('Invalid time format for slot #${slot.id}: "${slot.time}"');
@@ -372,6 +376,17 @@ class NotificationService {
         'Computed scheduledDate for #${slot.id}: $scheduledDate '
         '(durationUntil: ${durationUntil.inHours}h ${durationUntil.inMinutes % 60}m ${durationUntil.inSeconds % 60}s, '
         '${durationUntil.inMilliseconds}ms total, local tz: ${tz.local.name})',
+      );
+
+      // Wall-clock vs tz accuracy comparison log
+      final dartLocalNow = DateTime.now();
+      final tzLocalNow = tz.TZDateTime.now(tz.local);
+      _log(
+        'TIME ACCURACY CHECK for #${slot.id}: '
+        'Dart DateTime.now()=$dartLocalNow, '
+        'tz.TZDateTime.now(tz.local)=$tzLocalNow, '
+        'timezone=${tz.local.name}, '
+        'offsetDiff=${dartLocalNow.timeZoneOffset.inMinutes - tzLocalNow.timeZoneOffset.inMinutes}min',
       );
 
       final String amountStr = slot.defaultAmount > 0
@@ -438,6 +453,10 @@ class NotificationService {
       }
 
       if (!scheduled) {
+        _log(
+          '⚠️ WARNING: Exact alarm not used for #${slot.id} (exactAlarmGranted=$exactAlarmGranted). '
+          'Falling back to inexact mode. Notification timing may be delayed by up to 15+ minutes by Android Doze/battery optimization!',
+        );
         try {
           _log('FALLBACK ATTEMPT: Executing inexactAllowWhileIdle zonedSchedule for slot #${slot.id} on channel $reminderChannelId at $scheduledDate');
           await _notificationsPlugin.zonedSchedule(
@@ -452,11 +471,35 @@ class NotificationService {
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: payload,
           );
+          scheduled = true;
           _log('SUCCESS: Scheduled slot #${slot.id} with mode=AndroidScheduleMode.inexactAllowWhileIdle');
         } catch (e, st) {
           _log('FAILURE: inexactAllowWhileIdle failed for slot #${slot.id}: $e', error: e, stackTrace: st);
         }
       }
+
+      // Post-schedule verification
+      final pendingAlarms = await _notificationsPlugin.pendingNotificationRequests();
+      final isRegistered = pendingAlarms.any((p) => p.id == slot.id!);
+      final totalPending = pendingAlarms.length;
+      _log(
+        'POST-SCHEDULE VERIFICATION for #${slot.id}: '
+        'isRegistered=$isRegistered, '
+        'totalPendingAlarms=$totalPending, '
+        'allPendingIds=[${pendingAlarms.map((p) => p.id).join(", ")}]',
+      );
+      if (!isRegistered) {
+        _log('⚠️ CRITICAL: Alarm #${slot.id} was NOT found in pending notifications after scheduling!');
+      }
+
+      _log(
+        'SCHEDULE SUMMARY for #${slot.id}: '
+        'scheduled=$scheduled, '
+        'mode=${exactAlarmGranted && scheduled ? "exactAllowWhileIdle" : (scheduled ? "inexactAllowWhileIdle" : "failed")}, '
+        'scheduledDate=$scheduledDate, '
+        'batteryOptIgnored=$batteryOptIgnored, '
+        'channelId=$reminderChannelId',
+      );
     } catch (e, st) {
       _log('Error in scheduleDailyReminder for slot #${slot.id}: $e', error: e, stackTrace: st);
     }
@@ -474,6 +517,10 @@ class NotificationService {
         return;
       }
 
+      // Pre-cancel test notification id 99999
+      _log('PRE-CANCEL: Canceling any existing test notification (#99999)');
+      await _notificationsPlugin.cancel(99999);
+
       final exactAlarmGranted = await canScheduleExactAlarms();
       final batteryOptIgnored = await isBatteryOptimizationIgnored();
       _log('Permissions at test schedule instant: exactAlarmGranted=$exactAlarmGranted, batteryOptIgnored=$batteryOptIgnored');
@@ -484,6 +531,17 @@ class NotificationService {
       _log(
         'Computed scheduledDate for TEST notification (id=99999): $scheduledDate '
         '(durationUntil: ${durationUntil.inSeconds}s, ${durationUntil.inMilliseconds}ms total, local tz: ${tz.local.name})',
+      );
+
+      // Time accuracy check
+      final dartLocalNow = DateTime.now();
+      final tzLocalNow = tz.TZDateTime.now(tz.local);
+      _log(
+        'TIME ACCURACY CHECK for TEST notification: '
+        'Dart DateTime.now()=$dartLocalNow, '
+        'tz.TZDateTime.now(tz.local)=$tzLocalNow, '
+        'timezone=${tz.local.name}, '
+        'offsetDiff=${dartLocalNow.timeZoneOffset.inMinutes - tzLocalNow.timeZoneOffset.inMinutes}min',
       );
 
       const notificationTitle = '🧪 Test Reminder';
@@ -541,6 +599,10 @@ class NotificationService {
       }
 
       if (!scheduled) {
+        _log(
+          '⚠️ WARNING: Exact alarm not used for test notification (exactAlarmGranted=$exactAlarmGranted). '
+          'Falling back to inexact mode. Notification timing may be delayed by up to 15+ minutes!',
+        );
         try {
           _log('FALLBACK TEST ATTEMPT: Executing inexactAllowWhileIdle zonedSchedule for test notification at $scheduledDate');
           await _notificationsPlugin.zonedSchedule(
@@ -554,10 +616,24 @@ class NotificationService {
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: payload,
           );
+          scheduled = true;
           _log('TEST SUCCESS: Scheduled test notification with fallback mode=AndroidScheduleMode.inexactAllowWhileIdle');
         } catch (e, st) {
           _log('TEST FAILURE: inexactAllowWhileIdle failed for test notification: $e', error: e, stackTrace: st);
         }
+      }
+
+      // Post-schedule verification
+      final pendingAlarms = await _notificationsPlugin.pendingNotificationRequests();
+      final isRegistered = pendingAlarms.any((p) => p.id == 99999);
+      _log(
+        'POST-SCHEDULE VERIFICATION for TEST notification: '
+        'isRegistered=$isRegistered, '
+        'totalPendingAlarms=${pendingAlarms.length}, '
+        'allPendingIds=[${pendingAlarms.map((p) => p.id).join(", ")}]',
+      );
+      if (!isRegistered) {
+        _log('⚠️ CRITICAL: Test alarm #99999 was NOT found in pending notifications after scheduling!');
       }
     } catch (e, st) {
       _log('Error in scheduleTestNotification: $e', error: e, stackTrace: st);
@@ -578,6 +654,16 @@ class NotificationService {
       }
     }
     _log('Rescheduling complete: $scheduledCount active reminders processed out of ${slots.length}');
+
+    try {
+      final allPending = await _notificationsPlugin.pendingNotificationRequests();
+      _log(
+        'STARTUP AUDIT: ${allPending.length} alarms registered in AlarmManager after resync: '
+        'ids=[${allPending.map((p) => "${p.id}:${p.title}").join(", ")}]',
+      );
+    } catch (e, st) {
+      _log('STARTUP AUDIT ERROR: Failed to retrieve pending notification requests: $e', error: e, stackTrace: st);
+    }
   }
 
   Future<void> scheduleReminder(ReminderSlot slot, String categoryName) =>
