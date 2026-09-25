@@ -12,6 +12,7 @@ import 'package:money_management_app/presentation/blocs/expense/expense_event.da
 import 'package:money_management_app/presentation/blocs/expense/expense_state.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
+import 'package:money_management_app/presentation/screens/main_shell.dart';
 import 'package:money_management_app/presentation/screens/manage_categories_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
@@ -246,7 +247,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           context,
           message: "Added Rs ${parsedAmount.toStringAsFixed(0)} ($catName) to ${wallet.name}",
         );
-        Navigator.pop(context);
+        _handleBackNavigation();
       }
       return;
     }
@@ -283,7 +284,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           context,
           message: "Transferred Rs ${parsedAmount.toStringAsFixed(0)} from ${from.name} to ${to.name}",
         );
-        Navigator.pop(context);
+        _handleBackNavigation();
       }
       return;
     }
@@ -318,7 +319,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         context,
         message: isEditMode ? "Expense updated successfully" : "Expense added successfully",
       );
-      Navigator.pop(context);
+      _handleBackNavigation();
+    }
+  }
+
+  void _handleBackNavigation() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
     }
   }
 
@@ -347,27 +358,33 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           _toWallet ??= wallets.length > 1 ? wallets[1] : wallets.firstOrNull;
         }
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (bool didPop, dynamic result) {
+            if (didPop) return;
+            _handleBackNavigation();
+          },
+          child: Scaffold(
             backgroundColor: AppColors.background,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            centerTitle: false,
-            titleSpacing: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              _pageTitle,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+            appBar: AppBar(
+              backgroundColor: AppColors.background,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              centerTitle: false,
+              titleSpacing: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+                onPressed: _handleBackNavigation,
+              ),
+              title: Text(
+                _pageTitle,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
           body: SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -422,9 +439,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   Widget _buildModeSelector() {

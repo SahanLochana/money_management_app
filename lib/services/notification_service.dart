@@ -26,6 +26,7 @@ class NotificationService {
 
   bool _isInitialized = false;
   String? _pendingPayload;
+  bool isAppReadyForNavigation = false;
 
   NotificationService._init();
 
@@ -50,6 +51,10 @@ class NotificationService {
   }
 
   String? get pendingPayload => _pendingPayload;
+
+  void setPendingPayload(String? payload) {
+    _pendingPayload = payload;
+  }
 
   void clearPendingPayload() {
     _pendingPayload = null;

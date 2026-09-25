@@ -33,9 +33,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void _handleNotificationPayload(String? payload) {
-  NotificationService.log('_handleNotificationPayload received payload: "$payload"');
+bool _isNavigatingToTransaction = false;
+
+void handleNotificationPayload(String? payload) {
+  NotificationService.log('handleNotificationPayload received payload: "$payload"');
   if (payload == null || payload.isEmpty) return;
+  NotificationService.instance.clearPendingPayload();
+
+  if (_isNavigatingToTransaction) {
+    NotificationService.log('Already navigating to transaction screen; skipping duplicate navigation.');
+    return;
+  }
+
   try {
     final parts = payload.split('|');
     if (parts.isNotEmpty) {
@@ -43,6 +52,7 @@ void _handleNotificationPayload(String? payload) {
       final amountCents = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
       final double amount = amountCents / 100.0;
 
+      _isNavigatingToTransaction = true;
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           fullscreenDialog: true,
@@ -51,9 +61,12 @@ void _handleNotificationPayload(String? payload) {
             initialAmount: amount > 0 ? amount : null,
           ),
         ),
-      );
+      ).then((_) {
+        _isNavigatingToTransaction = false;
+      });
     }
   } catch (e, st) {
+    _isNavigatingToTransaction = false;
     NotificationService.log('Error handling notification payload: $e', error: e, stackTrace: st);
   }
 }
@@ -79,7 +92,13 @@ void main() async {
   try {
     await NotificationService.instance.initialize(
       onDidReceiveNotificationResponse: (response) {
-        _handleNotificationPayload(response.payload);
+        if (NotificationService.instance.isAppReadyForNavigation) {
+          handleNotificationPayload(response.payload);
+        } else {
+          NotificationService.log(
+            'Notification tapped while app was initializing; pending payload recorded.',
+          );
+        }
       },
     );
   } catch (e, st) {
@@ -149,6 +168,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!showSplash) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        NotificationService.instance.isAppReadyForNavigation = true;
+        final pending = NotificationService.instance.pendingPayload;
+        if (pending != null) {
+          handleNotificationPayload(pending);
+        }
+      });
+    }
+
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<ExpenseRepository>.value(value: expenseRepository),
@@ -194,16 +223,6 @@ class MyApp extends StatelessWidget {
           navigatorKey: navigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'Vault',
-          builder: (context, child) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final pending = NotificationService.instance.pendingPayload;
-              if (pending != null) {
-                NotificationService.instance.clearPendingPayload();
-                _handleNotificationPayload(pending);
-              }
-            });
-            return child ?? const SizedBox.shrink();
-          },
           theme: ThemeData(
             brightness: Brightness.dark,
             scaffoldBackgroundColor: AppColors.background,

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:money_management_app/main.dart';
 import 'package:money_management_app/presentation/screens/main_shell.dart';
 import 'package:money_management_app/presentation/screens/wallet_setup_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -73,6 +75,15 @@ class _SplashScreenState extends State<SplashScreen>
         },
       ),
     );
+
+    // Wait until transition completes so MainShell is fully active before pushing destination
+    Future.delayed(const Duration(milliseconds: 650), () {
+      NotificationService.instance.isAppReadyForNavigation = true;
+      final pending = NotificationService.instance.pendingPayload;
+      if (pending != null) {
+        handleNotificationPayload(pending);
+      }
+    });
   }
 
   @override
