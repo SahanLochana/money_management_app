@@ -301,6 +301,42 @@ class NotificationService {
     }
   }
 
+  /// Opens the Xiaomi/MIUI/HyperOS Autostart management screen so the user can
+  /// enable autostart for this app.
+  ///
+  /// On non-Xiaomi devices all three MIUI-specific intents will throw and the
+  /// native side falls back to ACTION_APPLICATION_DETAILS_SETTINGS, returning
+  /// false to indicate the generic screen was opened instead.
+  Future<bool> openAutostartSettings() async {
+    _log('openAutostartSettings requested');
+    try {
+      final result =
+          await _intentChannel.invokeMethod<bool>('openAutostartSettings');
+      _log('openAutostartSettings result: $result');
+      return result ?? false;
+    } catch (e, st) {
+      _log('Error opening autostart settings: $e', error: e, stackTrace: st);
+      return false;
+    }
+  }
+
+  /// Opens the Xiaomi/MIUI/HyperOS per-app battery saver screen.
+  ///
+  /// On non-Xiaomi devices the MIUI-specific intent will throw and the native
+  /// side falls back to ACTION_APPLICATION_DETAILS_SETTINGS, returning false.
+  Future<bool> openBatterySaverSettings() async {
+    _log('openBatterySaverSettings requested');
+    try {
+      final result =
+          await _intentChannel.invokeMethod<bool>('openBatterySaverSettings');
+      _log('openBatterySaverSettings result: $result');
+      return result ?? false;
+    } catch (e, st) {
+      _log('Error opening battery saver settings: $e', error: e, stackTrace: st);
+      return false;
+    }
+  }
+
   Future<bool> requestPermissions() async {
     try {
       final before = await Permission.notification.status;
@@ -430,26 +466,29 @@ class NotificationService {
 
       if (exactAlarmGranted) {
         try {
-          _log('ATTEMPT: Executing exactAllowWhileIdle zonedSchedule for slot #${slot.id} on channel $reminderChannelId at $scheduledDate');
+          // alarmClock mode uses AlarmManager.setAlarmClock() which Android fully exempts
+          // from Doze / App-Standby deferral — more reliable than exactAllowWhileIdle,
+          // especially on MIUI / HyperOS devices.
+          _log('ATTEMPT: Executing alarmClock zonedSchedule for slot #${slot.id} on channel $reminderChannelId at $scheduledDate');
           await _notificationsPlugin.zonedSchedule(
             slot.id!,
             notificationTitle,
             notificationBody,
             scheduledDate,
             notificationDetails,
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            androidScheduleMode: AndroidScheduleMode.alarmClock,
             matchDateTimeComponents: DateTimeComponents.time,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: payload,
           );
           scheduled = true;
-          _log('SUCCESS: Scheduled slot #${slot.id} with mode=AndroidScheduleMode.exactAllowWhileIdle');
+          _log('SUCCESS: Scheduled slot #${slot.id} with mode=AndroidScheduleMode.alarmClock');
         } catch (e, st) {
-          _log('FAILURE: exactAllowWhileIdle failed for slot #${slot.id}: $e', error: e, stackTrace: st);
+          _log('FAILURE: alarmClock zonedSchedule failed for slot #${slot.id}: $e', error: e, stackTrace: st);
         }
       } else {
-        _log('SKIPPED: exactAllowWhileIdle skipped for slot #${slot.id} because exactAlarmGranted=false');
+        _log('SKIPPED: alarmClock skipped for slot #${slot.id} because exactAlarmGranted=false');
       }
 
       if (!scheduled) {
@@ -577,25 +616,26 @@ class NotificationService {
 
       if (exactAlarmGranted) {
         try {
-          _log('TEST ATTEMPT: Executing exactAllowWhileIdle zonedSchedule for test notification at $scheduledDate');
+          // alarmClock mode — Android exempts AlarmManager.setAlarmClock() from Doze entirely.
+          _log('TEST ATTEMPT: Executing alarmClock zonedSchedule for test notification at $scheduledDate');
           await _notificationsPlugin.zonedSchedule(
             99999,
             notificationTitle,
             notificationBody,
             scheduledDate,
             notificationDetails,
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            androidScheduleMode: AndroidScheduleMode.alarmClock,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
             payload: payload,
           );
           scheduled = true;
-          _log('TEST SUCCESS: Scheduled test notification with mode=AndroidScheduleMode.exactAllowWhileIdle');
+          _log('TEST SUCCESS: Scheduled test notification with mode=AndroidScheduleMode.alarmClock');
         } catch (e, st) {
-          _log('TEST FAILURE: exactAllowWhileIdle failed for test notification: $e', error: e, stackTrace: st);
+          _log('TEST FAILURE: alarmClock zonedSchedule failed for test notification: $e', error: e, stackTrace: st);
         }
       } else {
-        _log('TEST SKIPPED: exactAllowWhileIdle skipped for test notification because exactAlarmGranted=false');
+        _log('TEST SKIPPED: alarmClock skipped for test notification because exactAlarmGranted=false');
       }
 
       if (!scheduled) {

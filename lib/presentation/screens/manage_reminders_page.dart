@@ -96,6 +96,49 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
       NotificationService.log(
         '_ensureBatteryOptimization: user allowed dialog, requestIgnoreBatteryOptimizations result=$reqResult',
       );
+
+      // Show a follow-up Autostart dialog.
+      //
+      // Some phone manufacturers (notably Xiaomi, Redmi and POCO running MIUI /
+      // HyperOS) maintain a separate "Autostart" allowlist that is completely
+      // independent of Android's standard battery-optimisation API. If the app
+      // is not in that allowlist, the OS silently cancels all scheduled alarms
+      // the moment the app is swiped away — no standard permission covers this.
+      //
+      // We show the dialog unconditionally because:
+      //   • On Xiaomi devices: the native call opens the real Autostart screen.
+      //   • On all other devices: the native call gracefully falls back to the
+      //     generic app-info screen (returns false) without crashing.
+      //
+      // NOTE: If device_info_plus is added as a dependency in the future, gate
+      // this dialog on `(await DeviceInfoPlugin().androidInfo).manufacturer
+      // .toLowerCase().contains('xiaomi')` to avoid showing an irrelevant extra
+      // step to Samsung/Pixel/OnePlus users.
+      if (!mounted) return;
+      final autostartAllowed = await ConfirmActionDialog.show(
+        context,
+        title: "One More Step for Reliable Reminders",
+        titleIcon: Icons.auto_awesome_rounded,
+        titleIconColor: AppColors.primary,
+        message:
+            "Your phone's manufacturer sometimes needs an extra permission called \"Autostart\" to let scheduled reminders fire in the background. Tap Allow to open the relevant settings screen.",
+        cancelLabel: "Skip",
+        confirmLabel: "Allow",
+        confirmColor: AppColors.primary,
+        confirmTextColor: const Color(0xFF0F0F14),
+      );
+
+      if (autostartAllowed) {
+        final launched =
+            await NotificationService.instance.openAutostartSettings();
+        NotificationService.log(
+          '_ensureBatteryOptimization: openAutostartSettings launched=$launched',
+        );
+      } else {
+        NotificationService.log(
+          '_ensureBatteryOptimization: user skipped Autostart dialog',
+        );
+      }
     } else {
       NotificationService.log(
         '_ensureBatteryOptimization: user dismissed background reliability dialog',
