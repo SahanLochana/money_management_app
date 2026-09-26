@@ -9,10 +9,15 @@ import 'package:money_management_app/presentation/blocs/reminder/reminder_bloc.d
 import 'package:money_management_app/presentation/blocs/reminder/reminder_event.dart';
 import 'package:money_management_app/presentation/blocs/reminder/reminder_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_back_appbar.dart';
 import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
+import 'package:money_management_app/presentation/widgets/app_loading_indicator.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/app_text_field.dart';
 import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
 import 'package:money_management_app/presentation/widgets/info_banner_card.dart';
+import 'package:money_management_app/presentation/widgets/labeled_field.dart';
+import 'package:money_management_app/presentation/widgets/pill_action_button.dart';
 import 'package:money_management_app/presentation/widgets/reminder_card.dart';
 import 'package:money_management_app/services/notification_service.dart';
 
@@ -250,158 +255,130 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Category",
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.surfaceBorder),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: selectedCatId,
-                      isExpanded: true,
-                      dropdownColor: AppColors.surface,
-                      items: categories.map((c) {
-                        return DropdownMenuItem<int>(
-                          value: c.id,
-                          child: Row(
-                            children: [
-                              Text(
-                                c.emoji,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  c.name,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 14,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() => selectedCatId = val);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Reminder Time",
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: selectedTime,
-                      builder: (context, child) {
-                        return Theme(
-                          data: ThemeData.dark().copyWith(
-                            colorScheme: const ColorScheme.dark(
-                              primary: AppColors.primary,
-                              surface: AppColors.surface,
-                            ),
-                          ),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedTime = picked);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
+                LabeledField(
+                  label: "Category",
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.surfaceBorder),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time_rounded,
-                              color: AppColors.primary,
-                              size: 18,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedCatId,
+                        isExpanded: true,
+                        dropdownColor: AppColors.surface,
+                        items: categories.map((c) {
+                          return DropdownMenuItem<int>(
+                            value: c.id,
+                            child: Row(
+                              children: [
+                                Text(
+                                  c.emoji,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    c.name,
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Text(
-                          "Change",
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedCatId = val);
+                          }
+                        },
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  "Default Amount (Optional)",
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
+                LabeledField(
+                  label: "Reminder Time",
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                        builder: (context, child) {
+                          return Theme(
+                            data: ThemeData.dark().copyWith(
+                              colorScheme: const ColorScheme.dark(
+                                primary: AppColors.primary,
+                                surface: AppColors.surface,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedTime = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.surfaceBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time_rounded,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Text(
+                            "Change",
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: InputDecoration(
+                const SizedBox(height: 16),
+                LabeledField(
+                  label: "Default Amount (Optional)",
+                  child: AppTextField(
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
                     hintText: "0.00",
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
                     prefixText: "Rs ",
-                    prefixStyle: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
                 ),
               ],
@@ -514,49 +491,16 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.textPrimary,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Daily Reminders",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
+      appBar: AppBackAppBar(
+        title: "Daily Reminders",
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: TextButton.icon(
+            child: PillActionButton(
+              label: "Add",
+              icon: Icons.add_rounded,
+              color: AppColors.primary,
               onPressed: _addReminderDialog,
-              icon: const Icon(Icons.add_rounded, color: AppColors.primary, size: 18),
-              label: const Text(
-                "Add",
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              ),
             ),
           ),
         ],
@@ -564,9 +508,7 @@ class _ManageRemindersPageState extends State<ManageRemindersPage>
       body: BlocBuilder<ReminderBloc, ReminderState>(
         builder: (context, state) {
           if (state is ReminderLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (state is ReminderLoaded) {

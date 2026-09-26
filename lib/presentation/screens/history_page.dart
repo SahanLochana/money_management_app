@@ -10,6 +10,8 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart'
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/screens/add_transaction_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_back_appbar.dart';
+import 'package:money_management_app/presentation/widgets/app_loading_indicator.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
 import 'package:money_management_app/presentation/widgets/transaction_details_sheet.dart';
@@ -117,28 +119,16 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
+      appBar: const AppBackAppBar(
+        title: "History",
+        hasLeading: false,
         titleSpacing: 20,
-        title: const Text(
-          "History",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
+        titleFontSize: 24,
       ),
       body: BlocBuilder<ExpenseBloc, ExpenseState>(
         builder: (context, state) {
           if (state is ExpenseLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (state is ExpenseError) {

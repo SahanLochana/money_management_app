@@ -6,9 +6,14 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_bloc.dart'
 import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart';
 import 'package:money_management_app/presentation/blocs/wallet/wallet_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_back_appbar.dart';
 import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
+import 'package:money_management_app/presentation/widgets/app_loading_indicator.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/app_text_field.dart';
 import 'package:money_management_app/presentation/widgets/emoji_avatar.dart';
+import 'package:money_management_app/presentation/widgets/labeled_field.dart';
+import 'package:money_management_app/presentation/widgets/pill_action_button.dart';
 
 class ManageWalletsPage extends StatefulWidget {
   const ManageWalletsPage({super.key});
@@ -24,7 +29,10 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
     context.read<WalletBloc>().add(const LoadWalletsEvent());
   }
 
-  Future<void> _addFundsDialog({Wallet? preselectedWallet, List<Wallet>? wallets}) async {
+  Future<void> _addFundsDialog({
+    Wallet? preselectedWallet,
+    List<Wallet>? wallets,
+  }) async {
     final availableWallets = wallets ?? [];
     if (availableWallets.isEmpty) return;
 
@@ -43,95 +51,71 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Choose Wallet",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.surfaceBorder),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: selectedWalletId,
-                      isExpanded: true,
-                      dropdownColor: AppColors.surface,
-                      items: availableWallets.map((w) {
-                        return DropdownMenuItem<int>(
-                          value: w.id,
-                          child: Row(
-                            children: [
-                              Text(w.emoji, style: const TextStyle(fontSize: 16)),
-                              const SizedBox(width: 8),
-                              Text(
-                                w.name,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
+                LabeledField(
+                  label: "Choose Wallet",
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.surfaceBorder),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedWalletId,
+                        isExpanded: true,
+                        dropdownColor: AppColors.surface,
+                        items: availableWallets.map((w) {
+                          return DropdownMenuItem<int>(
+                            value: w.id,
+                            child: Row(
+                              children: [
+                                Text(
+                                  w.emoji,
+                                  style: const TextStyle(fontSize: 16),
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() => selectedWalletId = val);
-                        }
-                      },
+                                const SizedBox(width: 8),
+                                Text(
+                                  w.name,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedWalletId = val);
+                          }
+                        },
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  "Amount",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  decoration: InputDecoration(
+                LabeledField(
+                  label: "Amount",
+                  child: AppTextField(
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
                     hintText: "0.00",
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
                     prefixText: "Rs ",
-                    prefixStyle: const TextStyle(
-                      color: AppColors.primary,
+                    textStyle: const TextStyle(
+                      color: AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
                     ),
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  "Note (Optional)",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: noteCtrl,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: InputDecoration(
+                LabeledField(
+                  label: "Note (Optional)",
+                  child: AppTextField(
+                    controller: noteCtrl,
                     hintText: "e.g. Salary, ATM withdrawal, Deposit",
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
                 ),
               ],
@@ -143,7 +127,9 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
               final fund = WalletFund(
                 walletId: selectedWalletId,
                 amountCents: (amt * 100).toInt(),
-                note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+                note: noteCtrl.text.trim().isEmpty
+                    ? null
+                    : noteCtrl.text.trim(),
                 createdAt: DateTime.now().toIso8601String(),
               );
               Navigator.pop(context, fund);
@@ -155,7 +141,10 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
 
     if (result != null && mounted) {
       context.read<WalletBloc>().add(AddWalletFundsEvent(result));
-      AppSnackBar.show(context, message: "Added Rs ${result.amount.toStringAsFixed(0)} to wallet");
+      AppSnackBar.show(
+        context,
+        message: "Added Rs ${result.amount.toStringAsFixed(0)} to wallet",
+      );
     }
   }
 
@@ -163,52 +152,21 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.textPrimary,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Wallets & Balances",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
+      appBar: AppBackAppBar(
+        title: "Wallets & Balances",
         actions: [
           BlocBuilder<WalletBloc, WalletState>(
             builder: (context, state) {
-              final wallets = (state is WalletLoaded) ? state.wallets : <Wallet>[];
+              final wallets = (state is WalletLoaded)
+                  ? state.wallets
+                  : <Wallet>[];
               return Padding(
                 padding: const EdgeInsets.only(right: 16),
-                child: TextButton.icon(
+                child: PillActionButton(
+                  label: "Add Funds",
+                  icon: Icons.add_rounded,
+                  color: AppColors.primary,
                   onPressed: () => _addFundsDialog(wallets: wallets),
-                  icon: const Icon(Icons.add_rounded, color: AppColors.primary, size: 18),
-                  label: const Text(
-                    "Add Funds",
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  ),
                 ),
               );
             },
@@ -218,9 +176,7 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
       body: BlocBuilder<WalletBloc, WalletState>(
         builder: (context, state) {
           if (state is WalletLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (state is WalletLoaded) {
@@ -274,25 +230,6 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Divider(color: AppColors.surfaceBorder, height: 1),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.info_outline_rounded,
-                            size: 14,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            "Computed from total funds added − total expenses",
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -349,8 +286,12 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
                                           vertical: 1,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.expense.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: AppColors.expense.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: const Text(
                                           "Negative balance",
@@ -379,9 +320,14 @@ class _ManageWalletsPageState extends State<ManageWalletsPage> {
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceLight.withValues(alpha: 0.6),
+                            color: AppColors.surfaceLight.withValues(
+                              alpha: 0.6,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(

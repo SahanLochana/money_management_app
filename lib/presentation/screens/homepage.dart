@@ -14,6 +14,7 @@ import 'package:money_management_app/presentation/screens/add_transaction_page.d
 import 'package:money_management_app/presentation/screens/manage_wallets_page.dart';
 import 'package:money_management_app/presentation/screens/settings_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_loading_indicator.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
 import 'package:money_management_app/presentation/widgets/herocard.dart';
@@ -212,9 +213,7 @@ class _HomepageState extends State<Homepage> {
       body: BlocBuilder<ExpenseBloc, ExpenseState>(
         builder: (context, state) {
           if (state is ExpenseLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (state is ExpenseError) {

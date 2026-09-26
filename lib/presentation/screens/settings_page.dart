@@ -6,8 +6,10 @@ import 'package:money_management_app/presentation/screens/manage_categories_page
 import 'package:money_management_app/presentation/screens/manage_reminders_page.dart';
 import 'package:money_management_app/presentation/screens/manage_wallets_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_back_appbar.dart';
 import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/app_text_field.dart';
 import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -65,26 +67,12 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context) => AppDialogShell(
         title: "Edit Daily Budget",
         confirmLabel: "Save",
-        content: TextField(
+        content: AppTextField(
           controller: controller,
           keyboardType: TextInputType.number,
           autofocus: true,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: "Enter amount",
-            hintStyle: const TextStyle(color: AppColors.textMuted),
-            prefixText: "Rs ",
-            prefixStyle: const TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
-            ),
-            filled: true,
-            fillColor: AppColors.surfaceLight,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.surfaceBorder),
-            ),
-          ),
+          hintText: "Enter amount",
+          prefixText: "Rs ",
         ),
         onConfirm: () {
           final val = double.tryParse(controller.text.trim());
@@ -117,28 +105,9 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.textPrimary,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Settings",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
+      appBar: const AppBackAppBar(
+        title: "Settings",
+        titleFontSize: 22,
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
