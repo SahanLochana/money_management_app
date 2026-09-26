@@ -561,12 +561,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         builder: (_) => ManageCategoriesPage(initialTab: tab),
       ),
     );
+    // Refresh expense categories from DB via bloc
+    if (mounted) {
+      context.read<ExpenseBloc>().add(const LoadExpenses());
+    }
     await _loadIncomeCategories();
     if (mounted) {
+      final state = context.read<ExpenseBloc>().state;
       setState(() {
         if (_selectedIncomeCategory != null &&
             !_incomeCategories.any((c) => c.id == _selectedIncomeCategory!.id)) {
           _selectedIncomeCategory = _incomeCategories.firstOrNull;
+        }
+        // Reset selected expense category if it was deleted
+        if (state is ExpenseLoaded &&
+            _selectedCategory != null &&
+            !state.categories.any((c) => c.id == _selectedCategory!.id)) {
+          _selectedCategory = state.categories.firstOrNull;
         }
       });
     }

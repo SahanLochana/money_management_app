@@ -17,10 +17,9 @@ import 'package:money_management_app/presentation/widgets/app_dialog_shell.dart'
 import 'package:money_management_app/presentation/widgets/app_loading_indicator.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
 import 'package:money_management_app/presentation/widgets/app_text_field.dart';
+import 'package:money_management_app/presentation/widgets/category_list_view.dart';
 import 'package:money_management_app/presentation/widgets/confirm_action_dialog.dart';
 import 'package:money_management_app/presentation/widgets/emoji_picker_grid.dart';
-import 'package:money_management_app/presentation/widgets/entity_list_tile.dart';
-import 'package:money_management_app/presentation/widgets/info_banner_card.dart';
 import 'package:money_management_app/presentation/widgets/labeled_field.dart';
 import 'package:money_management_app/presentation/widgets/pill_action_button.dart';
 
@@ -245,9 +244,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         decoration: BoxDecoration(
           color: AppColors.expense.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.expense.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: AppColors.expense.withValues(alpha: 0.3)),
         ),
         child: const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,26 +287,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   }
 
   Future<void> _deleteIncomeCategoryDialog(IncomeCategory cat) async {
-    final isCustom = !IncomeCategory.defaultCategories.any(
-      (d) => d.id == cat.id,
-    );
-    if (!isCustom) {
-      AppSnackBar.show(
-        context,
-        message: "Default income categories cannot be deleted",
-        isError: true,
-      );
-      return;
-    }
-
     final confirmed = await ConfirmActionDialog.show(
       context,
       title: "Delete '${cat.name}'?",
       titleIcon: Icons.warning_amber_rounded,
       titleIconColor: AppColors.expense,
-      message:
-          "Are you sure you want to remove ${cat.emoji} ${cat.name} from income categories?",
-      confirmLabel: "Delete",
+      message: "Are you sure you want to delete ${cat.emoji} ${cat.name}?",
+      confirmLabel: "Delete Category",
       confirmColor: AppColors.expense,
     );
 
@@ -479,36 +463,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       return const AppLoadingIndicator(color: AppColors.primary);
     }
 
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      children: [
-        // Info Banner
-        InfoBannerCard(
-          icon: Icons.receipt_long_rounded,
-          iconColor: AppColors.expense,
-          title: "${categories.length} Expense Categories",
-          subtitle:
-              "Used to track daily meals, shopping, transport & other expenses.",
-        ),
-
-        ...categories.map((cat) {
-          return EntityListTile(
-            emoji: cat.emoji,
-            name: cat.name,
-            trailing: IconButton(
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                color: AppColors.expense,
-                size: 20,
-              ),
-              tooltip: "Delete Category",
-              onPressed: () => _deleteCategoryDialog(cat),
-            ),
-          );
-        }),
-        const SizedBox(height: 20),
-      ],
+    return CategoryListView<Category>(
+      categories: categories,
+      emoji: (cat) => cat.emoji,
+      name: (cat) => cat.name,
+      onDelete: _deleteCategoryDialog,
+      deleteTooltip: "Delete Category",
     );
   }
 
@@ -517,66 +477,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       return const AppLoadingIndicator(color: AppColors.income);
     }
 
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      children: [
-        // Info Banner
-        InfoBannerCard(
-          icon: Icons.account_balance_wallet_rounded,
-          iconColor: AppColors.income,
-          title: "${_incomeCategories.length} Income Categories",
-          subtitle: "Used to tag your earnings when adding transactions",
-          gradient: LinearGradient(
-            colors: [
-              AppColors.income.withValues(alpha: 0.15),
-              AppColors.surface,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-
-        ..._incomeCategories.map((cat) {
-          final isDefault = IncomeCategory.defaultCategories.any(
-            (d) => d.id == cat.id,
-          );
-
-          return EntityListTile(
-            emoji: cat.emoji,
-            name: cat.name,
-            trailing: !isDefault
-                ? IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppColors.expense,
-                      size: 20,
-                    ),
-                    tooltip: "Delete Income Category",
-                    onPressed: () => _deleteIncomeCategoryDialog(cat),
-                  )
-                : Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      "Preset",
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-          );
-        }),
-        const SizedBox(height: 20),
-      ],
+    return CategoryListView<IncomeCategory>(
+      categories: _incomeCategories,
+      emoji: (cat) => cat.emoji,
+      name: (cat) => cat.name,
+      onDelete: _deleteIncomeCategoryDialog,
+      deleteTooltip: "Delete Income Category",
     );
   }
 }
