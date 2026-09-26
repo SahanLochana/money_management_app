@@ -58,12 +58,18 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Rename APK
+        run: |
+          VERSION_PLAIN=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*//' | tr -d ' \r\n')
+          mv build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/Vault ${VERSION_PLAIN}.apk"
+          echo "APK_PATH=build/app/outputs/flutter-apk/Vault ${VERSION_PLAIN}.apk" >> $GITHUB_ENV
+
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
           name: "Release ${{ env.VERSION }}"
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: ${{ env.APK_PATH }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
