@@ -7,6 +7,8 @@ import 'package:money_management_app/presentation/blocs/stats/stats_event.dart';
 import 'package:money_management_app/presentation/blocs/stats/stats_state.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
+import 'package:money_management_app/presentation/widgets/app_back_appbar.dart';
+import 'package:money_management_app/presentation/widgets/app_loading_indicator.dart';
 import 'package:money_management_app/presentation/widgets/section_header.dart';
 import 'package:money_management_app/presentation/widgets/transactioncard.dart';
 
@@ -65,28 +67,16 @@ class _StatsPageState extends State<StatsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
+      appBar: const AppBackAppBar(
+        title: "Statistics",
+        hasLeading: false,
         titleSpacing: 20,
-        title: const Text(
-          "Statistics",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
+        titleFontSize: 24,
       ),
       body: BlocBuilder<StatsBloc, StatsState>(
         builder: (context, state) {
           if (state is StatsLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+            return const AppLoadingIndicator();
           }
 
           if (state is StatsError) {

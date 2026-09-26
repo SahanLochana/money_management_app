@@ -16,7 +16,10 @@ import 'package:money_management_app/presentation/screens/main_shell.dart';
 import 'package:money_management_app/presentation/screens/manage_categories_page.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
 import 'package:money_management_app/presentation/theme/category_ui_helper.dart';
+import 'package:money_management_app/presentation/widgets/app_back_appbar.dart';
 import 'package:money_management_app/presentation/widgets/app_snackbar.dart';
+import 'package:money_management_app/presentation/widgets/app_text_field.dart';
+import 'package:money_management_app/presentation/widgets/labeled_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum TransactionMode { expense, income, transfer }
@@ -253,8 +256,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
 
     if (_mode == TransactionMode.transfer) {
-      final from = _fromWallet ?? wallets.firstOrNull;
-      final to = _toWallet ?? (wallets.length > 1 ? wallets[1] : wallets.firstOrNull);
+      final from = _fromWallet ??
+          wallets.where((w) => w.name == 'In Bank').firstOrNull ??
+          (wallets.length > 1 ? wallets[1] : wallets.firstOrNull);
+      final to = _toWallet ??
+          wallets.where((w) => w.name == 'In Hand').firstOrNull ??
+          wallets.firstOrNull;
 
       if (from == null || to == null) {
         AppSnackBar.show(context, message: "Please select source and destination wallets", isError: true);
@@ -354,8 +361,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           }
           _selectedCategory ??= categories.firstOrNull;
           _selectedWallet ??= wallets.firstOrNull;
-          _fromWallet ??= wallets.firstOrNull;
-          _toWallet ??= wallets.length > 1 ? wallets[1] : wallets.firstOrNull;
+          _fromWallet ??= wallets.where((w) => w.name == 'In Bank').firstOrNull ??
+              (wallets.length > 1 ? wallets[1] : wallets.firstOrNull);
+          _toWallet ??= wallets.where((w) => w.name == 'In Hand').firstOrNull ??
+              wallets.firstOrNull;
         }
 
         return PopScope(
@@ -366,24 +375,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           },
           child: Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppBar(
-              backgroundColor: AppColors.background,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              centerTitle: false,
-              titleSpacing: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
-                onPressed: _handleBackNavigation,
-              ),
-              title: Text(
-                _pageTitle,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            appBar: AppBackAppBar(
+              title: _pageTitle,
+              leadingIcon: Icons.close_rounded,
+              onLeadingTap: _handleBackNavigation,
+              titleFontWeight: FontWeight.w700,
             ),
           body: SafeArea(
             child: SingleChildScrollView(
@@ -565,12 +561,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         builder: (_) => ManageCategoriesPage(initialTab: tab),
       ),
     );
+    // Refresh expense categories from DB via bloc
+    if (mounted) {
+      context.read<ExpenseBloc>().add(const LoadExpenses());
+    }
     await _loadIncomeCategories();
     if (mounted) {
+      final state = context.read<ExpenseBloc>().state;
       setState(() {
         if (_selectedIncomeCategory != null &&
             !_incomeCategories.any((c) => c.id == _selectedIncomeCategory!.id)) {
           _selectedIncomeCategory = _incomeCategories.firstOrNull;
+        }
+        // Reset selected expense category if it was deleted
+        if (state is ExpenseLoaded &&
+            _selectedCategory != null &&
+            !state.categories.any((c) => c.id == _selectedCategory!.id)) {
+          _selectedCategory = state.categories.firstOrNull;
         }
       });
     }
@@ -665,40 +672,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
               );
             }),
-            // Manage button chip
-            GestureDetector(
-              onTap: () => _openManageCategories(CategoryTab.expense),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.surfaceBorder,
-                    width: 1,
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_rounded,
-                      size: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      "Add / Edit",
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ],
@@ -789,40 +762,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
               );
             }),
-            // + Add / Manage Income Categories Button
-            GestureDetector(
-              onTap: () => _openManageCategories(CategoryTab.income),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.income.withValues(alpha: 0.5),
-                    width: 1,
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_rounded,
-                      size: 16,
-                      color: AppColors.income,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      "Add / Manage",
-                      style: TextStyle(
-                        color: AppColors.income,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ],
@@ -896,8 +835,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Widget _buildTransferWalletsSection(List<Wallet> wallets) {
-    final fromName = _fromWallet?.name ?? 'In Hand';
-    final toName = _toWallet?.name ?? 'In Bank';
+    final fromName = _fromWallet?.name ?? 'In Bank';
+    final toName = _toWallet?.name ?? 'In Hand';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1090,43 +1029,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Widget _buildNoteInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Note (Optional)",
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _noteController,
-          maxLines: 2,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: "Add any extra context or note...",
-            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-            filled: true,
-            fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.surfaceBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: AppColors.surfaceBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: _accentColor, width: 1.5),
-            ),
-          ),
-        ),
-      ],
+    return LabeledField(
+      label: "Note (Optional)",
+      labelStyle: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
+      child: AppTextField(
+        controller: _noteController,
+        maxLines: 2,
+        hintText: "Add any extra context or note...",
+        fillColor: AppColors.surface,
+        borderRadius: 16,
+        accentColor: _accentColor,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
     );
   }
 

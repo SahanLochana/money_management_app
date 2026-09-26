@@ -36,10 +36,12 @@ class IncomeCategory {
   ];
 
   static const String _prefKey = 'custom_income_categories';
+  static const String _deletedPrefKey = 'deleted_income_categories';
 
   static Future<List<IncomeCategory>> loadAll() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_prefKey);
+    final deleted = (prefs.getStringList(_deletedPrefKey) ?? []).toSet();
     final List<IncomeCategory> customs = [];
     if (raw != null) {
       for (final item in raw) {
@@ -49,7 +51,8 @@ class IncomeCategory {
         } catch (_) {}
       }
     }
-    return [...defaultCategories, ...customs];
+    final all = [...defaultCategories, ...customs];
+    return all.where((c) => !deleted.contains(c.id)).toList();
   }
 
   static Future<void> saveCustom(IncomeCategory cat) async {
@@ -57,6 +60,11 @@ class IncomeCategory {
     final raw = prefs.getStringList(_prefKey) ?? [];
     raw.add(jsonEncode(cat.toMap()));
     await prefs.setStringList(_prefKey, raw);
+
+    final deleted = (prefs.getStringList(_deletedPrefKey) ?? []).toSet();
+    if (deleted.remove(cat.id)) {
+      await prefs.setStringList(_deletedPrefKey, deleted.toList());
+    }
   }
 
   static Future<void> deleteCategory(String id) async {
@@ -71,5 +79,9 @@ class IncomeCategory {
       }
     });
     await prefs.setStringList(_prefKey, raw);
+
+    final deleted = (prefs.getStringList(_deletedPrefKey) ?? []).toSet();
+    deleted.add(id);
+    await prefs.setStringList(_deletedPrefKey, deleted.toList());
   }
 }

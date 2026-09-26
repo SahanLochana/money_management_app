@@ -7,6 +7,8 @@ import 'package:money_management_app/presentation/blocs/wallet/wallet_event.dart
 import 'package:money_management_app/presentation/blocs/wallet/wallet_state.dart';
 import 'package:money_management_app/presentation/screens/main_shell.dart';
 import 'package:money_management_app/presentation/theme/app_colors.dart';
+import 'package:money_management_app/presentation/widgets/app_text_field.dart';
+import 'package:money_management_app/presentation/widgets/emoji_avatar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WalletSetupPage extends StatefulWidget {
@@ -179,18 +181,10 @@ class _WalletSetupPageState extends State<WalletSetupPage> {
                                 children: [
                                   Row(
                                     children: [
-                                      Container(
-                                        width: 38,
-                                        height: 38,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.surfaceLight,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          wallet.emoji,
-                                          style: const TextStyle(fontSize: 18),
-                                        ),
+                                      EmojiAvatar(
+                                        emoji: wallet.emoji,
+                                        size: 38,
+                                        fontSize: 18,
                                       ),
                                       const SizedBox(width: 12),
                                       Text(
@@ -204,44 +198,32 @@ class _WalletSetupPageState extends State<WalletSetupPage> {
                                     ],
                                   ),
                                   const SizedBox(height: 14),
-                                  TextField(
+                                  AppTextField(
                                     controller: controller,
                                     keyboardType: TextInputType.number,
-                                    style: const TextStyle(
+                                    hintText: "0.00",
+                                    hintStyle: const TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    prefixText: "Rs  ",
+                                    prefixStyle: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                    ),
+                                    textStyle: const TextStyle(
                                       color: AppColors.textPrimary,
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
                                     ),
-                                    decoration: InputDecoration(
-                                      hintText: "0.00",
-                                      hintStyle: const TextStyle(
-                                        color: AppColors.textMuted,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      prefixText: "Rs  ",
-                                      prefixStyle: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 18,
-                                      ),
-                                      filled: true,
-                                      fillColor: AppColors.surfaceLight,
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 14,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.primary,
-                                          width: 1.5,
-                                        ),
-                                      ),
+                                    borderRadius: 14,
+                                    hasBorder: false,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
                                     ),
+                                    accentColor: AppColors.primary,
                                   ),
                                 ],
                               ),
